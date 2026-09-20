@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiddie Wallet - กระปุกหมูออมสินเพื่อนรัก</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Fredoka & Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Canvas Confetti for Kids celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pink: '#FF85A1',
+                            lightPink: '#FFE5EC',
+                            yellow: '#FFD166',
+                            blue: '#4EA8DE',
+                            green: '#06D6A0',
+                            purple: '#B5179E',
+                            bg: '#FFF0F5'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                        display: ['Fredoka', 'Kanit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #FFF5F8;
+            background-image: radial-gradient(#FFB6C1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .bouncy-btn {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .bouncy-btn:active {
+            transform: scale(0.92);
+        }
+        
+        /* Custom cute scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFE5EC;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FF85A1;
+            border-radius: 10px;
+        }
+
+        @keyframes pulse-piggy {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05) rotate(2deg); }
+        }
+        .piggy-animate {
+            animation: pulse-piggy 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-slate-700 min-h-screen flex flex-col justify-between selection:bg-pink-300">
+
+    <div id="app" class="max-w-md mx-auto w-full min-h-screen flex flex-col bg-white shadow-2xl relative overflow-hidden pb-20 border-x-4 border-pink-200">
+        
+        <!-- HEADER BAR -->
+        <header class="bg-gradient-to-r from-pink-400 via-rose-400 to-amber-300 p-4 text-white rounded-b-3xl shadow-lg relative z-10">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center space-x-2">
+                    <span class="text-3xl piggy-animate">🐷</span>
+                    <div>
+                        <h1 class="font-display font-bold text-xl leading-tight drop-shadow-sm">Kiddie Wallet</h1>
+                        <p class="text-xs opacity-90 font-light" id="wallet-name-tag">กระเป๋าเงินครอบครัว</p>
+                    </div>
+                </div>
+                <button id="switch-wallet-btn" class="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-md border border-white/40 flex items-center gap-1 bouncy-btn">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span id="wallet-code-display">รหัส: ----</span>
+                </button>
+            </div>
+
+            <!-- SHARED WALLET BALANCE CARD -->
+            <div class="bg-white/95 backdrop-blur text-slate-800 p-4 rounded-2xl shadow-inner mt-2 border-2 border-pink-100 relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-semibold text-pink-500 bg-pink-100 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-users text-pink-500 mr-1"></i>เงินก้อนรวมในกระปุก
+                        </span>
+                        <div class="text-3xl font-display font-bold text-slate-800 mt-1 flex items-baseline">
+                            <span class="text-pink-500 mr-1">฿</span>
+                            <span id="shared-balance">0.00</span>
+                        </div>
+                    </div>
+                    <button id="quick-add-btn" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-4 py-2 rounded-2xl shadow-md border-b-4 border-orange-500 bouncy-btn flex items-center gap-2">
+                        <i class="fa-solid fa-plus text-lg"></i>
+                        <span>บันทึก</span>
+                    </button>
+                </div>
+
+                <!-- USER SWITCHER STRIP -->
+                <div class="mt-3 pt-3 border-t border-slate-100">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-xs text-slate-500 font-medium">สมาชิกที่ใช้งานขณะนี้:</span>
+                        <button id="manage-users-btn" class="text-xs text-pink-500 hover:underline flex items-center gap-1 font-semibold">
+                            <i class="fa-solid fa-user-plus"></i> เพิ่มสมาชิก
+                        </button>
+                    </div>
+                    <div id="users-avatar-list" class="flex gap-2 overflow-x-auto pb-1 pt-1">
+                        <!-- Dynamic Avatars render here -->
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 space-y-4 overflow-y-auto">
+
+            <!-- FILTER & TOGGLE MODE -->
+            <div class="flex bg-pink-100/80 p-1 rounded-2xl gap-1 text-sm font-semibold">
+                <button id="filter-all-btn" class="flex-1 py-2 rounded-xl text-center shadow-sm bg-white text-pink-600 transition-all flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-layer-group"></i> ดูรวมทุกคน
+                </button>
+                <button id="filter-user-btn" class="flex-1 py-2 rounded-xl text-center text-slate-500 transition-all flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-user"></i> ดูเฉพาะฉัน
+                </button>
+            </div>
+
+            <!-- PER-USER EXPENSE SUMMARY BAR -->
+            <div id="members-spending-breakdown" class="bg-white p-3 rounded-2xl border-2 border-pink-100 shadow-sm space-y-2">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        <i class="fa-solid fa-chart-pie text-pink-400 mr-1"></i> ยอดใช้จ่ายแยกตามสมาชิก
+                    </h3>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full" id="total-spent-tag">รวมใช้ไป: ฿0</span>
+                </div>
+                <div id="members-progress-bars" class="space-y-2">
+                    <!-- Dynamic Member Progress Bars -->
+                </div>
+            </div>
+
+            <!-- SAVINGS GOAL BANNER FOR KIDS -->
+            <div id="savings-goal-card" class="bg-gradient-to-r from-emerald-100 to-teal-50 border-2 border-emerald-200 p-3 rounded-2xl shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-center mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl" id="goal-emoji">🚀</span>
+                        <div>
+                            <h4 class="font-bold text-sm text-emerald-900" id="goal-title">ภารกิจออมเงิน: ซื้อของเล่นที่อยากได้</h4>
+                            <p class="text-xs text-emerald-700" id="goal-subtitle">เก็บสะสมเงินในกระปุกเป้าหมาย</p>
+                        </div>
+                    </div>
+                    <button id="edit-goal-btn" class="text-xs bg-white text-emerald-700 border border-emerald-300 font-bold px-2 py-1 rounded-xl shadow-xs bouncy-btn">
+                        ตั้งเป้าหมาย
+                    </button>
+                </div>
+                <div class="w-full bg-emerald-200/60 rounded-full h-3 mt-2 overflow-hidden border border-emerald-300">
+                    <div id="goal-progress-bar" class="bg-gradient-to-r from-emerald-400 to-teal-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-bold text-emerald-800 mt-1">
+                    <span>ออมแล้ว: ฿<span id="goal-current">0</span></span>
+                    <span>เป้าหมาย: ฿<span id="goal-target">500</span></span>
+                </div>
+            </div>
+
+            <!-- TRANSACTIONS HISTORY HEADER -->
+            <div class="flex justify-between items-center pt-2">
+                <h3 class="font-bold text-slate-700 text-base flex items-center gap-1.5">
+                    <i class="fa-solid fa-receipt text-amber-500"></i>
+                    <span>ประวัติการใช้จ่าย & ออม</span>
+                </h3>
+                <span id="tx-count-badge" class="text-xs bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full">0 รายการ</span>
+            </div>
+
+            <!-- TRANSACTIONS LIST -->
+            <div id="transactions-list" class="space-y-2.5 pb-4">
+                <div class="text-center py-10 text-slate-400 space-y-2">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl text-pink-300"></i>
+                    <p class="text-xs">กำลังโหลดรายการสด...</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: ADD TRANSACTION -->
+    <div id="add-tx-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 hidden p-0 sm:p-4 transition-all">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border-t-4 border-pink-400 space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl" id="current-user-avatar-modal">🐱</span>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">บันทึกรายการใหม่</h3>
+                        <p class="text-xs text-pink-500 font-semibold" id="current-user-name-modal">โดย: น้องมินนี่</p>
+                    </div>
+                </div>
+                <button class="close-modal text-slate-400 hover:text-slate-600 text-xl w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- TYPE SELECTOR -->
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" data-type="expense" class="tx-type-btn bg-rose-500 text-white font-bold py-2.5 rounded-2xl shadow-sm text-sm border-2 border-rose-600 bouncy-btn flex flex-col items-center gap-0.5">
+                    <i class="fa-solid fa-minus-circle"></i>
+                    <span>จ่ายออก (-เงิน)</span>
+                </button>
+                <button type="button" data-type="income" class="tx-type-btn bg-slate-100 text-slate-600 font-bold py-2.5 rounded-2xl text-sm border-2 border-transparent bouncy-btn flex flex-col items-center gap-0.5">
+                    <i class="fa-solid fa-plus-circle text-emerald-500"></i>
+                    <span>ได้เงินเพิ่ม (+)</span>
+                </button>
+                <button type="button" data-type="savings" class="tx-type-btn bg-slate-100 text-slate-600 font-bold py-2.5 rounded-2xl text-sm border-2 border-transparent bouncy-btn flex flex-col items-center gap-0.5">
+                    <i class="fa-solid fa-piggy-bank text-amber-500"></i>
+                    <span>หยอดออมเงิน</span>
+                </button>
+            </div>
+
+            <!-- AMOUNT INPUT -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">จำนวนเงิน (บาท)</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-pink-500">฿</span>
+                    <input type="number" id="tx-amount" step="any" placeholder="0.00" class="w-full pl-10 pr-4 py-3 bg-pink-50/50 border-2 border-pink-200 rounded-2xl text-3xl font-display font-bold text-slate-800 focus:outline-none focus:border-pink-400 text-right">
+                </div>
+            </div>
+
+            <!-- CATEGORY SELECTOR -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกหมวดหมู่</label>
+                <div id="category-grid" class="grid grid-cols-4 gap-2">
+                    <!-- Categories rendered dynamically -->
+                </div>
+            </div>
+
+            <!-- NOTE INPUT -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">บันทึกเพิ่มเติม (ไม่บังคับ)</label>
+                <input type="text" id="tx-note" placeholder="เช่น ซื้อไอศกรีมช็อกโกแลต..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pink-400">
+            </div>
+
+            <!-- SUBMIT BUTTON -->
+            <button id="save-tx-btn" class="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold py-3.5 rounded-2xl shadow-lg border-b-4 border-rose-600 text-base bouncy-btn flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check-circle text-xl"></i>
+                <span>บันทึกรายการ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: MANAGE MEMBERS / ADD MEMBER -->
+    <div id="member-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border-t-4 border-amber-400 space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-lg">เพิ่มสมาชิกใหม่</h3>
+                <button class="close-modal text-slate-400 hover:text-slate-600 text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อเล่นเด็กๆ หรือคุณพ่อคุณแม่</label>
+                <input type="text" id="new-member-name" placeholder="เช่น น้องมิกกี้, คุณแม่" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-amber-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-amber-400">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกการ์ตูนแทนตัว</label>
+                <div id="avatar-picker" class="grid grid-cols-4 gap-2 text-2xl">
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-amber-400">🐱</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🐶</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🐻</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🐰</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🦄</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🦖</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🦁</button>
+                    <button class="avatar-option p-2 bg-slate-100 rounded-2xl hover:bg-amber-100 text-center border-2 border-transparent">🤖</button>
+                </div>
+            </div>
+
+            <button id="create-member-btn" class="w-full bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold py-3 rounded-2xl shadow-md border-b-4 border-amber-600 bouncy-btn">
+                + เพิ่มสมาชิก
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT SAVINGS GOAL -->
+    <div id="goal-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border-t-4 border-emerald-400 space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-lg">ตั้งเป้าหมายออมเงิน</h3>
+                <button class="close-modal text-slate-400 text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">อยากออมเงินซื้ออะไร?</label>
+                <input type="text" id="goal-input-title" placeholder="เช่น หุ่นยนต์ประกอบ, ชุดระบายสี..." class="w-full px-3 py-2 bg-slate-50 border border-emerald-200 rounded-xl text-sm font-semibold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">ราคาเป้าหมาย (บาท)</label>
+                <input type="number" id="goal-input-target" placeholder="500" class="w-full px-3 py-2 bg-slate-50 border border-emerald-200 rounded-xl text-sm font-semibold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">สัญลักษณ์ไอคอน</label>
+                <div id="goal-emoji-picker" class="flex gap-2 text-2xl overflow-x-auto py-1">
+                    <button class="goal-emoji-opt p-2 bg-emerald-50 rounded-xl border-2 border-emerald-400">🚀</button>
+                    <button class="goal-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent">🧸</button>
+                    <button class="goal-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent">🎮</button>
+                    <button class="goal-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent">🚲</button>
+                    <button class="goal-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent">🎨</button>
+                    <button class="goal-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent">📚</button>
+                </div>
+            </div>
+
+            <button id="save-goal-btn" class="w-full bg-emerald-500 text-white font-bold py-3 rounded-2xl shadow-md border-b-4 border-emerald-700 bouncy-btn">
+                บันทึกเป้าหมาย
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: SWITCH WALLET CODE -->
+    <div id="wallet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border-t-8 border-pink-400 space-y-4 text-center">
+            <span class="text-4xl">🔑</span>
+            <h3 class="font-bold text-slate-800 text-xl">เปลี่ยนกระเป๋าเงิน / เข้าร่วมกลุ่ม</h3>
+            <p class="text-xs text-slate-500">ใส่รหัสกระเป๋าเดียวกันกับคนในบ้านเพื่อบันทึกและใช้วงเงินร่วมกันใน Real-time!</p>
+            
+            <input type="text" id="wallet-code-input" placeholder="เช่น FAMILY123" class="w-full uppercase text-center tracking-widest text-xl font-bold py-3 bg-pink-50 border-2 border-pink-300 rounded-2xl focus:outline-none focus:border-pink-500">
+
+            <div class="flex gap-2">
+                <button id="close-wallet-modal-btn" type="button" class="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl">ยกเลิก</button>
+                <button id="join-wallet-btn" type="button" class="flex-1 bg-pink-500 text-white font-bold py-3 rounded-2xl shadow-md border-b-4 border-pink-700 bouncy-btn">ตกลงเข้าร่วม</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none z-50">
+        <span id="toast-icon">✨</span>
+        <span id="toast-msg">ข้อความแจ้งเตือน</span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            addDoc, 
+            onSnapshot, 
+            updateDoc, 
+            deleteDoc 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase Configuration
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kiddie-wallet-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "demo", authDomain: "demo.firebaseapp.com", projectId: "demo" };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Default Preset Categories for Kids
+        const CATEGORIES = [
+            { id: 'snack', name: 'ขนม/น้ำ', icon: '🍦', color: 'bg-pink-100 text-pink-600' },
+            { id: 'toy', name: 'ของเล่น', icon: '🧸', color: 'bg-purple-100 text-purple-600' },
+            { id: 'study', name: 'เครื่องเขียน', icon: '📚', color: 'bg-blue-100 text-blue-600' },
+            { id: 'travel', name: 'เดินทาง', icon: '🚌', color: 'bg-amber-100 text-amber-600' },
+            { id: 'game', name: 'เกม/เติมเงิน', icon: '🎮', color: 'bg-indigo-100 text-indigo-600' },
+            { id: 'pocket', name: 'ค่าขนม', icon: '💵', color: 'bg-emerald-100 text-emerald-600' },
+            { id: 'savings', name: 'เงินออม', icon: '🐷', color: 'bg-rose-100 text-rose-600' },
+            { id: 'other', name: 'อื่นๆ', icon: '✨', color: 'bg-slate-100 text-slate-600' }
+        ];
+
+        // State Variables
+        let walletId = (localStorage.getItem('kiddie_wallet_id') || 'KIDS123').trim().toUpperCase();
+        let activeMemberId = localStorage.getItem(`kiddie_active_member_${walletId}`) || null;
+        let currentUser = null;
+        let members = [];
+        let transactions = [];
+        let savingsGoal = { title: 'ซื้อของเล่นที่อยากได้', targetAmount: 500, currentAmount: 0, emoji: '🚀' };
+        let selectedTxType = 'expense';
+        let selectedCategory = 'snack';
+        let selectedAvatar = '🐱';
+        let filterMode = 'all'; // 'all' or 'user'
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(`kiddie_txs_${walletId}`, JSON.stringify(transactions));
+                localStorage.setItem(`kiddie_members_${walletId}`, JSON.stringify(members));
+                localStorage.setItem(`kiddie_goal_${walletId}`, JSON.stringify(savingsGoal));
+            } catch (e) {
+                console.error("LocalStorage save error:", e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedTxs = localStorage.getItem(`kiddie_txs_${walletId}`);
+                if (savedTxs) transactions = JSON.parse(savedTxs);
+
+                const savedMem = localStorage.getItem(`kiddie_members_${walletId}`);
+                if (savedMem) members = JSON.parse(savedMem);
+
+                const savedGoal = localStorage.getItem(`kiddie_goal_${walletId}`);
+                if (savedGoal) savingsGoal = JSON.parse(savedGoal);
+            } catch (e) {
+                console.error("LocalStorage load error:", e);
+            }
+        }
+
+        // Web Audio Sound Effects Synthesizer for Kids
+        function playCuteSound(type = 'pop') {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'pop') {
+                    osc.frequency.setValueAtTime(400, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.1);
+                } else if (type === 'coin') {
+                    osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+                    osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.25);
+                }
+            } catch (e) {
+                // Audio not supported
+            }
+        }
+
+        function showToast(msg, icon = '✨') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        function getCollectionPath(colName) {
+            return collection(db, 'artifacts', appId, 'public', 'data', colName);
+        }
+
+        function getDocPath(colName, id) {
+            return doc(db, 'artifacts', appId, 'public', 'data', colName, id);
+        }
+
+        let unsubscribeMembers, unsubscribeTxs, unsubscribeGoal;
+
+        async function initApp() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.warn("Auth initialization fallback:", err);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                }
+                setupRealtimeListeners();
+            });
+        }
+
+        function setupRealtimeListeners() {
+            walletId = (walletId || 'KIDS123').trim().toUpperCase();
+            document.getElementById('wallet-code-display').innerText = `รหัส: ${walletId}`;
+            document.getElementById('wallet-name-tag').innerText = `กระเป๋าเงินกลุ่ม [${walletId}]`;
+
+            // Clear previous wallet state
+            members = [];
+            transactions = [];
+            loadFromLocalStorage();
+
+            if (members.length === 0) {
+                createDefaultMembers();
+            }
+
+            renderMembersUI();
+            calculateSharedBalance();
+            renderTransactionsUI();
+            renderSpendingBreakdown();
+            renderGoalUI();
+
+            // Clean previous listeners
+            if (unsubscribeMembers) unsubscribeMembers();
+            if (unsubscribeTxs) unsubscribeTxs();
+            if (unsubscribeGoal) unsubscribeGoal();
+
+            try {
+                // 1. Listen to Members strictly for current Wallet
+                unsubscribeMembers = onSnapshot(getCollectionPath('walletMembers'), (snapshot) => {
+                    const allMembers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    const filtered = allMembers.filter(m => m.walletId && m.walletId.toString().trim().toUpperCase() === walletId);
+                    if (filtered.length > 0) {
+                        members = filtered;
+                        saveToLocalStorage();
+                        renderMembersUI();
+                        renderSpendingBreakdown();
+                    }
+                }, (error) => console.warn("Members Firestore sync using LocalStorage"));
+
+                // 2. Listen to Transactions in current Wallet
+                unsubscribeTxs = onSnapshot(getCollectionPath('transactions'), (snapshot) => {
+                    const allTxs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    transactions = allTxs
+                        .filter(t => t.walletId && t.walletId.toString().trim().toUpperCase() === walletId)
+                        .sort((a, b) => b.timestamp - a.timestamp);
+
+                    saveToLocalStorage();
+                    calculateSharedBalance();
+                    renderTransactionsUI();
+                    renderSpendingBreakdown();
+                }, (error) => console.warn("Transactions Firestore sync using LocalStorage"));
+
+                // 3. Listen to Savings Goal for current Wallet
+                unsubscribeGoal = onSnapshot(getDocPath('savingsGoals', walletId), (docSnap) => {
+                    if (docSnap.exists()) {
+                        savingsGoal = docSnap.data();
+                        saveToLocalStorage();
+                        renderGoalUI();
+                    }
+                }, (error) => console.warn("Goal Firestore sync using LocalStorage"));
+            } catch (err) {
+                console.warn("Offline mode active.");
+            }
+        }
+
+        async function createDefaultMembers() {
+            const currentWallet = (walletId || 'KIDS123').trim().toUpperCase();
+            const m1 = { walletId: currentWallet, name: 'น้องมินนี่', avatar: '🐱', role: 'kid' };
+            const m2 = { walletId: currentWallet, name: 'คุณแม่', avatar: '👩', role: 'parent' };
+            
+            try {
+                const ref1 = await addDoc(getCollectionPath('walletMembers'), m1);
+                await addDoc(getCollectionPath('walletMembers'), m2);
+                activeMemberId = ref1.id;
+                localStorage.setItem(`kiddie_active_member_${currentWallet}`, activeMemberId);
+            } catch (err) {
+                console.error("Failed to create default members:", err);
+            }
+        }
+
+        function calculateSharedBalance() {
+            let total = 0;
+            let totalSaved = 0;
+            transactions.forEach(t => {
+                const amt = parseFloat(t.amount) || 0;
+                if (t.type === 'income') total += amt;
+                else if (t.type === 'expense') total -= amt;
+                else if (t.type === 'savings') {
+                    total -= amt; 
+                    totalSaved += amt;
+                }
+            });
+
+            document.getElementById('shared-balance').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            if (savingsGoal.currentAmount !== totalSaved) {
+                savingsGoal.currentAmount = totalSaved;
+                renderGoalUI();
+            }
+        }
+
+        function renderMembersUI() {
+            const container = document.getElementById('users-avatar-list');
+            container.innerHTML = '';
+
+            // Verify active member exists in current wallet members list
+            if (members.length > 0 && (!activeMemberId || !members.some(m => m.id === activeMemberId))) {
+                activeMemberId = members[0].id;
+                localStorage.setItem(`kiddie_active_member_${walletId}`, activeMemberId);
+            }
+
+            members.forEach(m => {
+                const isActive = m.id === activeMemberId;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all bouncy-btn shrink-0 ${
+                    isActive 
+                        ? 'bg-pink-500 text-white shadow-md scale-105 ring-2 ring-pink-300' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-pink-100'
+                }`;
+                btn.innerHTML = `<span>${m.avatar}</span><span>${m.name}</span>`;
+                btn.onclick = () => {
+                    activeMemberId = m.id;
+                    localStorage.setItem(`kiddie_active_member_${walletId}`, activeMemberId);
+                    playCuteSound('pop');
+                    renderMembersUI();
+                    if (filterMode === 'user') renderTransactionsUI();
+                    renderSpendingBreakdown();
+                };
+                container.appendChild(btn);
+            });
+
+            const activeMem = members.find(m => m.id === activeMemberId);
+            if (activeMem) {
+                document.getElementById('current-user-avatar-modal').innerText = activeMem.avatar;
+                document.getElementById('current-user-name-modal').innerText = `โดย: ${activeMem.name}`;
+            }
+        }
+
+        function renderSpendingBreakdown() {
+            const container = document.getElementById('members-progress-bars');
+            container.innerHTML = '';
+
+            let totalExpenseAll = 0;
+            const memberSpentMap = {};
+
+            members.forEach(m => memberSpentMap[m.id] = 0);
+
+            transactions.forEach(t => {
+                if (t.type === 'expense') {
+                    const amt = parseFloat(t.amount) || 0;
+                    totalExpenseAll += amt;
+                    if (memberSpentMap[t.memberId] !== undefined) {
+                        memberSpentMap[t.memberId] += amt;
+                    }
+                }
+            });
+
+            document.getElementById('total-spent-tag').innerText = `รวมใช้ไป: ฿${totalExpenseAll.toLocaleString()}`;
+
+            members.forEach(m => {
+                const spent = memberSpentMap[m.id] || 0;
+                const percent = totalExpenseAll > 0 ? Math.round((spent / totalExpenseAll) * 100) : 0;
+
+                const item = document.createElement('div');
+                item.className = 'space-y-1';
+                item.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold">
+                        <span class="flex items-center gap-1">${m.avatar} ${m.name}</span>
+                        <span class="text-slate-500">฿${spent.toLocaleString()} (${percent}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="bg-pink-400 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderTransactionsUI() {
+            const container = document.getElementById('transactions-list');
+            container.innerHTML = '';
+
+            const displayList = filterMode === 'user' 
+                ? transactions.filter(t => t.memberId === activeMemberId)
+                : transactions;
+
+            document.getElementById('tx-count-badge').innerText = `${displayList.length} รายการ`;
+
+            if (displayList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 bg-white/60 rounded-2xl border-2 border-dashed border-pink-200">
+                        <span class="text-4xl">🎈</span>
+                        <p class="text-xs text-slate-400 mt-2">ยังไม่มีรายการบันทึก</p>
+                        <p class="text-[10px] text-pink-400">กดปุ่ม + บันทึก ด้านบนได้เลย!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            displayList.forEach(t => {
+                const cat = CATEGORIES.find(c => c.id === t.category) || CATEGORIES[7];
+                const isSavings = t.type === 'savings';
+                
+                let amountClass = 'text-rose-500';
+                let sign = '-';
+                if (t.type === 'income') {
+                    amountClass = 'text-emerald-500';
+                    sign = '+';
+                } else if (isSavings) {
+                    amountClass = 'text-amber-500';
+                    sign = '🐷 ';
+                }
+
+                const dateStr = new Date(t.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+                const card = document.createElement('div');
+                card.className = 'bg-white p-3 rounded-2xl border border-pink-100 shadow-sm flex items-center justify-between transition-all hover:shadow-md';
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl ${cat.color} flex items-center justify-center text-xl shrink-0 shadow-xs">
+                            ${cat.icon}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-slate-800 text-sm">${t.note || cat.name}</span>
+                                <span class="text-[10px] bg-slate-100 px-1.5 py-0.2 rounded-md text-slate-500">${t.memberName || 'สมาชิก'}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">${dateStr} • ${cat.name}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-display font-bold text-base ${amountClass}">
+                            ${sign}฿${parseFloat(t.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                        </span>
+                        <button class="delete-tx-btn text-[10px] text-slate-300 hover:text-rose-400 block ml-auto mt-0.5" data-id="${t.id}">
+                            <i class="fa-solid fa-trash-can"></i> ลบ
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('.delete-tx-btn').onclick = () => deleteTransaction(t.id);
+                container.appendChild(card);
+            });
+        }
+
+        function renderGoalUI() {
+            document.getElementById('goal-title').innerText = savingsGoal.title || 'ภารกิจออมเงิน';
+            document.getElementById('goal-emoji').innerText = savingsGoal.emoji || '🚀';
+            document.getElementById('goal-current').innerText = (savingsGoal.currentAmount || 0).toLocaleString();
+            document.getElementById('goal-target').innerText = (savingsGoal.targetAmount || 500).toLocaleString();
+
+            const pct = Math.min(100, Math.round(((savingsGoal.currentAmount || 0) / (savingsGoal.targetAmount || 1)) * 100));
+            document.getElementById('goal-progress-bar').style.width = `${pct}%`;
+
+            if (pct >= 100 && !savingsGoal.celebrated) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                playCuteSound('coin');
+                showToast("ยินดีด้วย! ออมเงินครบเป้าหมายแล้ว 🎉", "🥳");
+                savingsGoal.celebrated = true;
+            }
+        }
+
+        function renderCategoriesPicker() {
+            const grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
+            CATEGORIES.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const isSelected = c.id === selectedCategory;
+                btn.className = `p-2 rounded-2xl flex flex-col items-center justify-center border-2 transition-all bouncy-btn ${
+                    isSelected ? 'border-pink-500 bg-pink-50 text-pink-600 font-bold shadow-xs' : 'border-slate-100 bg-slate-50 text-slate-600'
+                }`;
+                btn.innerHTML = `<span class="text-2xl">${c.icon}</span><span class="text-[10px] mt-1">${c.name}</span>`;
+                btn.onclick = () => {
+                    selectedCategory = c.id;
+                    playCuteSound('pop');
+                    renderCategoriesPicker();
+                };
+                grid.appendChild(btn);
+            });
+        }
+
+        async function saveTransaction() {
+            const amountInput = document.getElementById('tx-amount');
+            const noteInput = document.getElementById('tx-note');
+            const amount = parseFloat(amountInput.value);
+
+            if (!amount || isNaN(amount) || amount <= 0) {
+                showToast("กรุณาระบุจำนวนเงินให้ถูกต้องน้า", "⚠️");
+                return;
+            }
+
+            // Ensure valid member is selected
+            let activeMem = members.find(m => m.id === activeMemberId);
+            if (!activeMem) {
+                if (members.length > 0) {
+                    activeMem = members[0];
+                    activeMemberId = activeMem.id;
+                } else {
+                    activeMem = { id: 'mem_default', name: 'สมาชิก', avatar: '🐱' };
+                    activeMemberId = 'mem_default';
+                }
+            }
+
+            const newTx = {
+                id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                walletId: walletId || 'KIDS123',
+                memberId: activeMemberId || 'default',
+                memberName: activeMem.name || 'สมาชิก',
+                memberAvatar: activeMem.avatar || '🐱',
+                type: selectedTxType || 'expense',
+                category: selectedCategory || 'snack',
+                amount: Number(amount),
+                note: (noteInput.value || '').trim(),
+                timestamp: Date.now()
+            };
+
+            // 1. Immediately Close Modal Popup for smooth UX
+            document.getElementById('add-tx-modal').classList.add('hidden');
+
+            // 2. Optimistic update to Local State
+            transactions.unshift(newTx);
+            saveToLocalStorage();
+            calculateSharedBalance();
+            renderTransactionsUI();
+            renderSpendingBreakdown();
+
+            // 3. Sync to Firebase (in background if available)
+            try {
+                await addDoc(getCollectionPath('transactions'), newTx);
+            } catch (err) {
+                console.warn("Firebase save skipped/failed, fallback to LocalStorage:", err);
+            }
+
+            // Play sound effect & toast
+            playCuteSound(selectedTxType === 'savings' ? 'coin' : 'pop');
+            if (selectedTxType === 'savings') {
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+                showToast(`หยอดออมสินเรียบร้อย +฿${amount}`, "🐷");
+            } else {
+                showToast("บันทึกรายการสำเร็จแล้ว!", "✅");
+            }
+
+            // Reset Inputs
+            amountInput.value = '';
+            noteInput.value = '';
+        }
+
+        async function deleteTransaction(txId) {
+            // Remove locally
+            transactions = transactions.filter(t => t.id !== txId);
+            saveToLocalStorage();
+            calculateSharedBalance();
+            renderTransactionsUI();
+            renderSpendingBreakdown();
+
+            try {
+                await deleteDoc(getDocPath('transactions', txId));
+            } catch (err) {
+                console.warn("Delete remote skipped:", err);
+            }
+
+            playCuteSound('pop');
+            showToast("ลบรายการเรียบร้อยแล้ว", "🗑️");
+        }
+
+        async function createMember() {
+            const nameInput = document.getElementById('new-member-name');
+            const name = nameInput.value.trim();
+            if (!name) {
+                showToast("กรุณาใส่ชื่อสมาชิกด้วยน้า", "⚠️");
+                return;
+            }
+
+            const currentWallet = (walletId || 'KIDS123').trim().toUpperCase();
+            const newMember = {
+                id: 'mem_' + Date.now(),
+                walletId: currentWallet,
+                name: name,
+                avatar: selectedAvatar || '🐱',
+                role: 'kid'
+            };
+
+            // Close modal immediately
+            document.getElementById('member-modal').classList.add('hidden');
+
+            members.push(newMember);
+            activeMemberId = newMember.id;
+            localStorage.setItem(`kiddie_active_member_${currentWallet}`, activeMemberId);
+            
+            saveToLocalStorage();
+            renderMembersUI();
+            renderSpendingBreakdown();
+
+            try {
+                await addDoc(getCollectionPath('walletMembers'), newMember);
+            } catch (e) {
+                console.warn("Firebase create member skipped:", e);
+            }
+
+            nameInput.value = '';
+            showToast(`ยินดีต้อนรับ ${name}!`, "🎉");
+        }
+
+        async function saveSavingsGoal() {
+            const title = document.getElementById('goal-input-title').value.trim() || 'เป้าหมายออมเงิน';
+            const target = parseFloat(document.getElementById('goal-input-target').value) || 500;
+
+            savingsGoal.title = title;
+            savingsGoal.targetAmount = target;
+            savingsGoal.celebrated = false;
+
+            // Close modal immediately
+            document.getElementById('goal-modal').classList.add('hidden');
+
+            saveToLocalStorage();
+            renderGoalUI();
+
+            try {
+                await setDoc(getDocPath('savingsGoals', walletId), savingsGoal);
+            } catch (e) {
+                console.warn("Firebase goal save skipped:", e);
+            }
+
+            showToast("ตั้งเป้าหมายเรียบร้อย สู้ๆ น้า!", "🚀");
+        }
+
+        document.getElementById('quick-add-btn').onclick = () => {
+            renderCategoriesPicker();
+            document.getElementById('add-tx-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('manage-users-btn').onclick = () => {
+            document.getElementById('member-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('edit-goal-btn').onclick = () => {
+            document.getElementById('goal-input-title').value = savingsGoal.title;
+            document.getElementById('goal-input-target').value = savingsGoal.targetAmount;
+            document.getElementById('goal-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('switch-wallet-btn').onclick = () => {
+            document.getElementById('wallet-code-input').value = walletId;
+            document.getElementById('wallet-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('close-wallet-modal-btn').onclick = () => {
+            document.getElementById('wallet-modal').classList.add('hidden');
+        };
+
+        document.getElementById('join-wallet-btn').onclick = () => {
+            const codeInput = document.getElementById('wallet-code-input');
+            const code = codeInput.value.trim().toUpperCase();
+            if (code) {
+                walletId = code;
+                localStorage.setItem('kiddie_wallet_id', walletId);
+                activeMemberId = localStorage.getItem(`kiddie_active_member_${walletId}`) || null;
+                
+                document.getElementById('wallet-modal').classList.add('hidden');
+                setupRealtimeListeners();
+                showToast(`ย้ายเข้ากระเป๋า [${walletId}] แล้ว!`, "🔑");
+            }
+        };
+
+        // Modal Close Buttons
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = (e) => {
+                const modal = e.target.closest('.fixed');
+                if (modal) modal.classList.add('hidden');
+            };
+        });
+
+        // Type Button Selector
+        document.querySelectorAll('.tx-type-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.tx-type-btn').forEach(b => {
+                    b.classList.remove('bg-rose-500', 'bg-emerald-500', 'bg-amber-500', 'text-white', 'border-rose-600', 'border-emerald-600', 'border-amber-600');
+                    b.classList.add('bg-slate-100', 'text-slate-600', 'border-transparent');
+                });
+
+                selectedTxType = btn.dataset.type;
+                playCuteSound('pop');
+
+                if (selectedTxType === 'expense') {
+                    btn.classList.add('bg-rose-500', 'text-white', 'border-rose-600');
+                } else if (selectedTxType === 'income') {
+                    btn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+                } else {
+                    btn.classList.add('bg-amber-500', 'text-white', 'border-amber-600');
+                }
+            };
+        });
+
+        // Avatar Option Pickers
+        document.querySelectorAll('.avatar-option').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.avatar-option').forEach(b => b.classList.remove('border-amber-400', 'bg-amber-100'));
+                btn.classList.add('border-amber-400', 'bg-amber-100');
+                selectedAvatar = btn.innerText;
+                playCuteSound('pop');
+            };
+        });
+
+        // Emoji Goal Picker
+        document.querySelectorAll('.goal-emoji-opt').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.goal-emoji-opt').forEach(b => b.classList.remove('border-emerald-400', 'bg-emerald-50'));
+                btn.classList.add('border-emerald-400', 'bg-emerald-50');
+                savingsGoal.emoji = btn.innerText;
+                playCuteSound('pop');
+            };
+        });
+
+        // Filter Toggle Buttons
+        document.getElementById('filter-all-btn').onclick = () => {
+            filterMode = 'all';
+            document.getElementById('filter-all-btn').className = 'flex-1 py-2 rounded-xl text-center shadow-sm bg-white text-pink-600 transition-all flex items-center justify-center gap-1';
+            document.getElementById('filter-user-btn').className = 'flex-1 py-2 rounded-xl text-center text-slate-500 transition-all flex items-center justify-center gap-1';
+            renderTransactionsUI();
+        };
+
+        document.getElementById('filter-user-btn').onclick = () => {
+            filterMode = 'user';
+            document.getElementById('filter-user-btn').className = 'flex-1 py-2 rounded-xl text-center shadow-sm bg-white text-pink-600 transition-all flex items-center justify-center gap-1';
+            document.getElementById('filter-all-btn').className = 'flex-1 py-2 rounded-xl text-center text-slate-500 transition-all flex items-center justify-center gap-1';
+            renderTransactionsUI();
+        };
+
+        // Form Submission Handlers
+        document.getElementById('save-tx-btn').onclick = saveTransaction;
+        document.getElementById('create-member-btn').onclick = createMember;
+        document.getElementById('save-goal-btn').onclick = saveSavingsGoal;
+
+        // Initialize App
+        initApp();
+    </script>
+</body>
+</html>
