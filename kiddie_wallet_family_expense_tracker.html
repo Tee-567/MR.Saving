@@ -1,0 +1,2758 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiddie Wallet - Family Expense Tracker</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Fredoka & Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Canvas Confetti for Kids celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pink: '#FF85A1',
+                            lightPink: '#FFE5EC',
+                            yellow: '#FFD166',
+                            blue: '#4EA8DE',
+                            green: '#06D6A0',
+                            purple: '#B5179E',
+                            orange: '#FF9F1C',
+                            bg: '#FFF0F5'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                        display: ['Fredoka', 'Kanit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #FFF5F8;
+            background-image: radial-gradient(#FFB6C1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .bouncy-btn {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .bouncy-btn:active {
+            transform: scale(0.92);
+        }
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFE5EC;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FF85A1;
+            border-radius: 10px;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @keyframes pulse-piggy {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08) rotate(3deg); }
+        }
+        .piggy-animate {
+            animation: pulse-piggy 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+
+<div id="app" class="max-w-md mx-auto w-full min-h-screen flex flex-col bg-white shadow-2xl relative overflow-hidden pb-20 border-x-4 border-pink-200">
+    
+    <!-- HEADER BAR -->
+    <header class="bg-gradient-to-r from-pink-400 via-rose-400 to-amber-300 p-4 text-white rounded-b-3xl shadow-lg relative z-10">
+        <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center space-x-2">
+                <span class="text-3xl piggy-animate cursor-pointer" id="app-logo-piggy">🐷</span>
+                <div>
+                    <h1 class="font-display font-bold text-xl leading-tight drop-shadow-sm">Kiddie Wallet</h1>
+                    <p class="text-xs opacity-90 font-light" id="wallet-name-tag">กระเป๋าเงินครอบครัว</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button id="supabase-sync-btn" title="การเชื่อมต่อ Supabase" class="bg-white/20 hover:bg-white/30 text-white text-xs px-2.5 py-1.5 rounded-full backdrop-blur-md border border-white/40 flex items-center gap-1 bouncy-btn">
+                    <i class="fa-solid fa-database text-xs"></i>
+                    <span id="sb-status-text" class="text-[10px]">Supabase</span>
+                </button>
+                <button id="refresh-sb-btn" title="ดึงข้อมูลล่าสุดจาก Supabase" class="bg-white/20 hover:bg-white/30 text-white text-xs p-2 rounded-full backdrop-blur-md border border-white/40 bouncy-btn">
+                    <i class="fa-solid fa-rotate text-xs"></i>
+                </button>
+                <button id="switch-wallet-btn" class="bg-white/20 hover:bg-white/30 text-white text-xs px-2.5 py-1.5 rounded-full backdrop-blur-md border border-white/40 flex items-center gap-1 bouncy-btn">
+                    <i class="fa-solid fa-key"></i>
+                    <span id="wallet-code-display">รหัส: ----</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- SHARED WALLET BALANCE CARD -->
+        <div class="bg-white/95 backdrop-blur text-slate-800 p-4 rounded-2xl shadow-inner mt-2 border-2 border-pink-100 relative overflow-hidden">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-semibold text-pink-500 bg-pink-100 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <i class="fa-solid fa-users text-pink-500"></i>เงินก้อนรวมในกระปุก
+                    </span>
+                    <div class="text-3xl font-display font-bold text-slate-800 mt-1 flex items-baseline">
+                        <span class="text-pink-500 mr-1">฿</span>
+                        <span id="shared-balance">0.00</span>
+                    </div>
+                </div>
+                <button id="quick-add-btn" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-4 py-2.5 rounded-2xl shadow-md border-b-4 border-orange-500 bouncy-btn flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-plus text-base"></i>
+                    <span>บันทึก</span>
+                </button>
+            </div>
+
+            <!-- USER SWITCHER STRIP -->
+            <div class="mt-3 pt-3 border-t border-slate-100">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-xs text-slate-500 font-medium">สมาชิกทั้งหมด:</span>
+                    <button id="manage-users-btn" class="text-xs text-pink-500 hover:underline flex items-center gap-1 font-semibold">
+                        <i class="fa-solid fa-user-plus"></i> เพิ่มสมาชิก
+                    </button>
+                </div>
+                <div id="users-avatar-list" class="flex gap-2 overflow-x-auto pb-1 pt-1">
+                    <!-- Dynamic Avatars render here -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 p-4 space-y-4 overflow-y-auto">
+
+        <!-- STORAGE & SUPABASE STATUS BADGE -->
+        <div id="sync-status-badge" class="flex items-center justify-between bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600 transition-all">
+            <span class="flex items-center gap-1.5 font-medium">
+                <i id="sync-badge-icon" class="fa-solid fa-database text-emerald-600"></i>
+                <span id="sync-badge-text">กำลังตรวจสอบการเชื่อมต่อ Supabase...</span>
+            </span>
+            <span id="sync-badge-tag" class="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">รอการเชื่อมต่อ</span>
+        </div>
+
+        <!-- MONTH SELECTOR TABS & NAVIGATION -->
+        <div class="bg-white p-2.5 rounded-2xl border-2 border-pink-100 shadow-xs space-y-2">
+            <div class="flex items-center justify-between">
+                <button id="prev-month-btn" class="w-8 h-8 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 flex items-center justify-center bouncy-btn">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+                <div class="flex items-center gap-2 font-bold text-slate-700 text-sm">
+                    <i class="fa-solid fa-calendar-days text-pink-500"></i>
+                    <span id="current-month-display-title">เดือนปัจจุบัน</span>
+                </div>
+                <button id="next-month-btn" class="w-8 h-8 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 flex items-center justify-center bouncy-btn">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+
+            <!-- SCROLLABLE MONTH TABS BAR -->
+            <div id="month-tabs-container" class="flex gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-0.5">
+                <!-- Dynamic Month Tabs Render Here -->
+            </div>
+            
+            <!-- CUSTOM DATE RANGE FILTER PANEL -->
+            <div class="pt-2 border-t border-pink-100 flex flex-col gap-1.5">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-600">
+                    <span class="flex items-center gap-1"><i class="fa-solid fa-filter-circle-dollar text-pink-500"></i> กำหนดช่วงวันที่ต้องการสรุป:</span>
+                    <button type="button" id="clear-custom-date-btn" class="text-[10px] text-rose-500 hover:underline">ล้างช่วงวันที่</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-0.5">ตั้งแต่วันที่</label>
+                        <input type="date" id="filter-start-date" class="w-full px-2.5 py-1.5 bg-pink-50/40 border border-pink-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-pink-400">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-0.5">ถึงวันที่</label>
+                        <input type="date" id="filter-end-date" class="w-full px-2.5 py-1.5 bg-pink-50/40 border border-pink-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-pink-400">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MULTI-TAB EXPENSE SUMMARY DASHBOARD WITH DETAILS -->
+        <div id="summary-dashboard-card" class="bg-white p-4 rounded-3xl border-2 border-pink-100 shadow-sm space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-pie text-pink-500 text-sm"></i> สรุปยอดเงินตามช่วงเวลา/เดือน
+                </h3>
+                <span class="text-xs bg-pink-100 text-pink-700 font-bold px-3 py-1 rounded-full shadow-xs" id="total-spent-tag">รวมใช้ไป: ฿0</span>
+            </div>
+
+            <!-- SUMMARY TABS SELECTOR (4 TABS) -->
+            <div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-2xl text-[11px] font-bold">
+                <button type="button" id="sum-tab-member" class="py-2 rounded-xl bg-white text-pink-600 shadow-xs flex items-center justify-center gap-0.5 transition-all bouncy-btn font-bold">
+                    <span>👤</span> <span>ตามคน</span>
+                </button>
+                <button type="button" id="sum-tab-method" class="py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn">
+                    <span>💳</span> <span>วิธีจ่าย</span>
+                </button>
+                <button type="button" id="sum-tab-subdetail" class="py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn">
+                    <span>📌</span> <span>รายละเอียด</span>
+                </button>
+                <button type="button" id="sum-tab-category" class="py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn">
+                    <span>🏷️</span> <span>หมวดหมู่</span>
+                </button>
+            </div>
+
+            <!-- TAB CONTENT 1: BY MEMBER -->
+            <div id="summary-member-view" class="space-y-2 pt-1">
+                <div id="members-progress-bars" class="space-y-1.5">
+                    <!-- Dynamic Member Progress Bars -->
+                </div>
+            </div>
+
+            <!-- TAB CONTENT 2: BY PAYMENT METHOD -->
+            <div id="summary-method-view" class="space-y-2 pt-1 hidden">
+                <div id="methods-progress-bars" class="space-y-1.5">
+                    <!-- Dynamic Payment Method Bars -->
+                </div>
+            </div>
+
+            <!-- TAB CONTENT 3: BY DETAILS -->
+            <div id="summary-subdetail-view" class="space-y-2 pt-1 hidden">
+                <div id="subdetails-progress-bars" class="space-y-1.5">
+                    <!-- Dynamic Detail Bars -->
+                </div>
+            </div>
+
+            <!-- TAB CONTENT 4: BY CATEGORY -->
+            <div id="summary-category-view" class="space-y-2 pt-1 hidden">
+                <div id="categories-progress-bars" class="space-y-1.5">
+                    <!-- Dynamic Category Bars -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SAVINGS GOAL BANNER -->
+        <div id="savings-goal-card" class="bg-gradient-to-r from-emerald-100 to-teal-50 border-2 border-emerald-200 p-3.5 rounded-2xl shadow-sm relative overflow-hidden">
+            <div class="flex justify-between items-center mb-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl" id="goal-emoji">🚀</span>
+                    <div>
+                        <h4 class="font-bold text-sm text-emerald-900" id="goal-title">ภารกิจออมเงิน: ซื้อของเล่นที่อยากได้</h4>
+                        <p class="text-xs text-emerald-700" id="goal-subtitle">เก็บสะสมเงินในกระปุกเป้าหมาย</p>
+                    </div>
+                </div>
+                <button id="edit-goal-btn" class="text-xs bg-white text-emerald-700 border border-emerald-300 font-bold px-2.5 py-1 rounded-xl shadow-xs bouncy-btn">
+                    ตั้งเป้าหมาย
+                </button>
+            </div>
+            <div class="w-full bg-emerald-200/60 rounded-full h-3 mt-2 overflow-hidden border border-emerald-300">
+                <div id="goal-progress-bar" class="bg-gradient-to-r from-emerald-400 to-teal-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-[11px] font-bold text-emerald-800 mt-1">
+                <span>ออมแล้ว: ฿<span id="goal-current">0</span></span>
+                <span>เป้าหมาย: ฿<span id="goal-target">500</span></span>
+            </div>
+        </div>
+
+        <!-- ACTIVE FILTERS SUMMARY BAR -->
+        <div id="active-filters-bar" class="bg-amber-50 border border-amber-200 p-2.5 rounded-2xl text-xs flex items-center justify-between gap-2 shadow-xs transition-all hidden">
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar font-medium text-amber-900">
+                <span class="font-bold shrink-0 text-amber-700"><i class="fa-solid fa-filter text-amber-500"></i> ตัวกรอง:</span>
+                <span id="filter-tag-member" class="bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-lg shrink-0 text-[11px]"></span>
+                <span id="filter-tag-method" class="bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-lg shrink-0 text-[11px]"></span>
+                <span id="filter-tag-subdetail" class="bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-lg shrink-0 text-[11px]"></span>
+                <span id="filter-tag-category" class="bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-lg shrink-0 text-[11px]"></span>
+            </div>
+            <button id="reset-filters-btn" class="text-[10px] bg-amber-500 hover:bg-amber-600 text-white font-bold px-2 py-1 rounded-xl shrink-0 bouncy-btn flex items-center gap-1">
+                <i class="fa-solid fa-rotate-left"></i> ล้าง
+            </button>
+        </div>
+
+        <!-- TRANSACTIONS HISTORY HEADER (UPDATED WITH TOGGLE ALL) -->
+        <div class="flex justify-between items-center pt-1">
+            <h3 class="font-bold text-slate-700 text-base flex items-center gap-1.5">
+                <i class="fa-solid fa-receipt text-amber-500"></i>
+                <span>ประวัติรายการแสดงตามที่เลือก</span>
+            </h3>
+            <div class="flex items-center gap-2">
+                <button id="toggle-all-days-btn" class="text-[10px] bg-pink-50 hover:bg-pink-100 text-pink-600 font-bold px-2 py-1 rounded-xl border border-pink-200 bouncy-btn flex items-center gap-1">
+                    <i class="fa-solid fa-arrows-up-down text-[9px]"></i> ขยาย/หุบทั้งหมด
+                </button>
+                <span id="tx-count-badge" class="text-xs bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full">0 รายการ</span>
+            </div>
+        </div>
+
+        <!-- TRANSACTIONS LIST (GROUPED BY DATE - DAILY SUMMARY DEFAULT) -->
+        <div id="transactions-list" class="space-y-2.5 pb-4">
+            <div class="text-center py-8 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin text-2xl text-pink-400 mb-2"></i>
+                <p class="text-xs">กำลังดึงข้อมูล...</p>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- MODAL 1: ADD / EDIT TRANSACTION -->
+<div id="add-tx-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 hidden p-0 sm:p-4 transition-all">
+    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border-t-4 border-pink-400 space-y-4 max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl" id="current-user-avatar-modal">👤</span>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg" id="tx-modal-title">บันทึกรายการใหม่</h3>
+                    <p class="text-xs text-pink-500 font-semibold" id="current-user-name-modal">โดย: -</p>
+                </div>
+            </div>
+            <button class="close-modal text-slate-400 hover:text-slate-600 text-xl w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- TYPE SELECTOR -->
+        <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-type="expense" class="tx-type-btn bg-rose-500 text-white font-bold py-2.5 rounded-2xl shadow-md scale-105 border-2 border-rose-600 bouncy-btn flex flex-col items-center gap-0.5 text-xs">
+                <i class="fa-solid fa-minus-circle text-sm"></i>
+                <span>จ่ายออก (-เงิน)</span>
+            </button>
+            <button type="button" data-type="income" class="tx-type-btn bg-slate-100 text-slate-600 font-bold py-2.5 rounded-2xl border-2 border-transparent bouncy-btn flex flex-col items-center gap-0.5 text-xs">
+                <i class="fa-solid fa-plus-circle text-emerald-500 text-sm"></i>
+                <span>ได้เงินเพิ่ม (+)</span>
+            </button>
+            <button type="button" data-type="savings" class="tx-type-btn bg-slate-100 text-slate-600 font-bold py-2.5 rounded-2xl border-2 border-transparent bouncy-btn flex flex-col items-center gap-0.5 text-xs">
+                <i class="fa-solid fa-piggy-bank text-amber-500 text-sm"></i>
+                <span>หยอดออมเงิน</span>
+            </button>
+        </div>
+
+        <!-- BACKDATED CALENDAR DATE PICKER -->
+        <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-calendar-day text-pink-500"></i> เลือกวันที่บันทึก (เลือกย้อนหลังได้)
+            </label>
+            <div class="relative">
+                <input type="date" id="tx-date" class="w-full px-3 py-2 bg-pink-50/50 border border-pink-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-pink-400">
+            </div>
+        </div>
+
+        <!-- PAYMENT METHOD & DETAILS SELECTOR -->
+        <div id="payment-method-section" class="space-y-2 border-2 border-purple-100 p-3 rounded-2xl bg-purple-50/30">
+            <div class="flex justify-between items-center">
+                <label class="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-credit-card text-purple-500"></i> ช่องทางจ่ายเงิน/รับเงิน
+                </label>
+                <button type="button" id="open-manage-methods-btn" class="text-[11px] text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-gear"></i> จัดการช่องทาง
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2" id="payment-method-grid">
+                <!-- Dynamic payment method buttons render here -->
+            </div>
+
+            <!-- PAYMENT DETAIL FIELD -->
+            <div class="pt-2 space-y-2 border-t border-purple-100 mt-2">
+                <div class="flex items-center justify-between">
+                    <label class="block text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-pen-nib text-purple-500"></i>
+                        <span>รายละเอียดช่องทาง</span>
+                    </label>
+                    <button type="button" id="add-current-subdetail-btn" class="text-[10px] bg-purple-600 hover:bg-purple-700 text-white font-bold px-2 py-0.5 rounded-lg bouncy-btn flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[9px]"></i> +เพิ่ม
+                    </button>
+                </div>
+
+                <div class="relative flex items-center gap-1">
+                    <input type="text" id="tx-pay-subdetail" placeholder="เช่น บัตรเครดิต AAAA, KBank *1234, SCB Easy" class="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-medium focus:outline-none focus:border-purple-500 shadow-2xs">
+                </div>
+
+                <!-- PRESET DETAIL TAGS WITH REMOVE BUTTONS -->
+                <div class="space-y-1">
+                    <div class="text-[10px] font-bold text-slate-500 flex justify-between items-center">
+                        <span>📌 ตัวเลือกรายละเอียดที่บันทึกไว้ (กดเพื่อใช้):</span>
+                        <span class="text-[9px] text-purple-400 font-normal">(กด ✕ เพื่อลบตัวเลือก)</span>
+                    </div>
+                    <div class="flex gap-1.5 flex-wrap max-h-28 overflow-y-auto p-1 bg-white/60 rounded-xl border border-purple-100" id="preset-subdetails-container">
+                        <!-- Dynamic Detail tags render here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AMOUNT & NOTE INPUTS -->
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">จำนวนเงิน (บาท)</label>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-pink-500 font-bold text-xl">฿</span>
+                <input type="number" id="tx-amount" step="0.01" placeholder="0.00" class="w-full pl-8 pr-3 py-2.5 bg-pink-50/50 border-2 border-pink-200 rounded-2xl text-xl font-bold text-slate-800 focus:outline-none focus:border-pink-400">
+            </div>
+        </div>
+
+        <div>
+            <div class="flex justify-between items-center mb-1">
+                <label class="block text-xs font-bold text-slate-500">บันทึกช่วยจำ / รายละเอียด</label>
+                <button type="button" id="add-note-preset-btn" class="text-[10px] bg-pink-600 hover:bg-pink-700 text-white font-bold px-2 py-0.5 rounded-lg bouncy-btn flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-[9px]"></i> +เพิ่มคำนี้ในตัวเลือก
+                </button>
+            </div>
+            <input type="text" id="tx-note" placeholder="เช่น ค่าไอศกรีม, ซื้อสมุดวาดภาพ..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-pink-400 mb-2">
+            
+            <!-- FREQUENTLY USED NOTE PRESETS -->
+            <div class="space-y-1">
+                <div class="text-[10px] font-bold text-slate-500 flex justify-between items-center">
+                    <span>⭐ ตัวเลือกบันทึกช่วยจำที่ใช้บ่อย (กดเพื่อใช้):</span>
+                    <span class="text-[9px] text-pink-400 font-normal">(กด ✕ เพื่อลบตัวเลือก)</span>
+                </div>
+                <div class="flex gap-1.5 flex-wrap max-h-28 overflow-y-auto p-1 bg-slate-50/80 rounded-xl border border-slate-200" id="preset-notes-container">
+                    <!-- Dynamic Note preset tags render here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORY SELECTOR -->
+        <div>
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                    <i class="fa-solid fa-tags text-purple-500"></i> เลือกหมวดหมู่ (คลิกที่หมวดหมู่เพื่อแก้ไข/จัดการ)
+                </span>
+                <button type="button" id="open-add-cat-btn" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1 rounded-xl shadow-xs bouncy-btn flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-xs"></i> สร้างหมวดหมู่
+                </button>
+            </div>
+            <div id="category-grid" class="grid grid-cols-4 gap-2 max-h-44 overflow-y-auto p-1">
+                <!-- Dynamic Categories Render Here -->
+            </div>
+        </div>
+
+        <button id="save-tx-btn" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3.5 rounded-2xl shadow-lg border-b-4 border-pink-700 bouncy-btn flex items-center justify-center gap-2 text-base">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span id="save-tx-btn-text">บันทึกรายการ</span>
+        </button>
+    </div>
+</div>
+
+<!-- MODAL 2: MANAGE PAYMENT METHODS & DETAILS -->
+<div id="manage-methods-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border-t-4 border-purple-500 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <span>💳</span> จัดการช่องทางการจ่ายเงิน
+            </h3>
+            <button class="close-methods-modal text-slate-400 hover:text-slate-600 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <p class="text-xs text-slate-500">
+            คุณสามารถปรับแต่งชื่อช่องทาง, Emoji และกำหนดรายละเอียดพื้นฐานได้ตามต้องการ
+        </p>
+
+        <div id="manage-methods-list" class="space-y-2">
+            <!-- Dynamic Editable Payment Methods Render Here -->
+        </div>
+
+        <button class="close-methods-modal w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-2xl text-xs">
+            ปิดหน้าต่าง
+        </button>
+    </div>
+</div>
+
+<!-- MODAL 3: ADD / EDIT CATEGORY -->
+<div id="add-category-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border-t-4 border-purple-400 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2" id="cat-modal-title">
+                <span>✨</span> สร้าง/แก้ไขหมวดหมู่
+            </h3>
+            <button class="close-category-modal text-slate-400 hover:text-slate-600 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="flex justify-center my-1">
+            <div id="cat-preview-badge" class="px-4 py-2 rounded-2xl flex items-center gap-2 text-sm font-bold shadow-xs bg-pink-100 text-pink-600">
+                <span id="cat-preview-emoji" class="text-xl">🍕</span>
+                <span id="cat-preview-name">ชื่อหมวดหมู่</span>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อหมวดหมู่</label>
+            <input type="text" id="new-cat-name" placeholder="เช่น ค่าการ์ตูน, บุฟเฟต์..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-400">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">เลือก Emoji ไอคอน</label>
+            <div id="category-emoji-picker" class="grid grid-cols-6 gap-2 text-xl mb-2">
+                <button type="button" class="cat-emoji-opt p-2 rounded-xl border-2 border-purple-500 bg-purple-100 ring-2 ring-purple-400 scale-105 shadow-sm transition-all">🍕</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🍿</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🎨</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">⚽</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🐈</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🎁</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🚗</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">💻</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🍔</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🥤</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">⭐</button>
+                <button type="button" class="cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all">🎒</button>
+            </div>
+            <input type="text" id="custom-cat-emoji-input" placeholder="หรือพิมพ์ Emoji ตรงนี้ เช่น 🛹" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-purple-400">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกสีหมวดหมู่</label>
+            <div id="cat-color-picker" class="grid grid-cols-4 gap-2">
+                <button type="button" data-color="bg-pink-100 text-pink-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent ring-2 ring-purple-600 ring-offset-2 scale-105 shadow-md flex items-center justify-center text-xs bg-pink-100 text-pink-600 font-bold transition-all">ชมพู</button>
+                <button type="button" data-color="bg-purple-100 text-purple-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-purple-100 text-purple-600 font-bold transition-all">ม่วง</button>
+                <button type="button" data-color="bg-blue-100 text-blue-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-blue-100 text-blue-600 font-bold transition-all">ฟ้า</button>
+                <button type="button" data-color="bg-amber-100 text-amber-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-amber-100 text-amber-600 font-bold transition-all">ส้ม</button>
+                <button type="button" data-color="bg-emerald-100 text-emerald-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-emerald-100 text-emerald-600 font-bold transition-all">เขียว</button>
+                <button type="button" data-color="bg-indigo-100 text-indigo-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-indigo-100 text-indigo-600 font-bold transition-all">คราม</button>
+                <button type="button" data-color="bg-rose-100 text-rose-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-rose-100 text-rose-600 font-bold transition-all">แดง</button>
+                <button type="button" data-color="bg-slate-100 text-slate-600" class="cat-color-opt p-2 rounded-xl border-2 border-transparent flex items-center justify-center text-xs bg-slate-100 text-slate-600 font-bold transition-all">เทา</button>
+            </div>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+            <button id="delete-cat-btn" type="button" class="hidden flex-1 bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-3 rounded-2xl text-xs transition-all flex items-center justify-center gap-1">
+                <i class="fa-solid fa-trash-can"></i> ลบหมวดหมู่
+            </button>
+            <button id="save-custom-category-btn" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-2xl shadow-md border-b-4 border-purple-700 bouncy-btn flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span id="cat-btn-text">สร้างหมวดหมู่ใหม่</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 4: MANAGE MEMBERS / ADD MEMBER -->
+<div id="member-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border-t-4 border-amber-400 space-y-4">
+        <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg">เพิ่มสมาชิกใหม่</h3>
+            <button class="close-modal text-slate-400 hover:text-slate-600 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อเล่นเด็กๆ หรือคุณพ่อคุณแม่</label>
+            <input type="text" id="new-member-name" placeholder="เช่น น้องฟ้า, คุณพ่อ" class="w-full px-3 py-2.5 bg-slate-50 border-2 border-amber-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-amber-400">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกการ์ตูนแทนตัว</label>
+            <div id="avatar-picker" class="grid grid-cols-4 gap-2 text-2xl">
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-amber-400 bg-amber-100 ring-2 ring-amber-400 scale-105 shadow-sm transition-all">🐱</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🐶</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🐻</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🐰</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🦄</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🦖</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🦁</button>
+                <button type="button" class="avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all">🤖</button>
+            </div>
+        </div>
+
+        <button id="create-member-btn" class="w-full bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold py-3 rounded-2xl shadow-md border-b-4 border-amber-600 bouncy-btn">
+            + เพิ่มสมาชิก
+        </button>
+    </div>
+</div>
+
+<!-- MODAL 5: EDIT SAVINGS GOAL -->
+<div id="goal-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border-t-4 border-emerald-400 space-y-4">
+        <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg">ตั้งเป้าหมายออมเงิน</h3>
+            <button class="close-modal text-slate-400 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">อยากออมเงินซื้ออะไร?</label>
+            <input type="text" id="goal-input-title" placeholder="เช่น หุ่นยนต์ประกอบ, ชุดระบายสี..." class="w-full px-3 py-2 bg-slate-50 border border-emerald-200 rounded-xl text-sm font-semibold">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">ราคาเป้าหมาย (บาท)</label>
+            <input type="number" id="goal-input-target" placeholder="500" class="w-full px-3 py-2 bg-slate-50 border border-emerald-200 rounded-xl text-sm font-semibold">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">สัญลักษณ์ไอคอน</label>
+            <div id="goal-emoji-picker" class="flex gap-2 text-2xl overflow-x-auto py-1">
+                <button type="button" class="goal-emoji-opt p-2 rounded-xl border-2 border-emerald-400 bg-emerald-50 ring-2 ring-emerald-400 scale-105 shadow-sm transition-all">🚀</button>
+                <button type="button" class="goal-emoji-opt p-2 rounded-xl border-2 border-transparent bg-slate-50 transition-all">🧸</button>
+                <button type="button" class="goal-emoji-opt p-2 rounded-xl border-2 border-transparent bg-slate-50 transition-all">🎮</button>
+                <button type="button" class="goal-emoji-opt p-2 rounded-xl border-2 border-transparent bg-slate-50 transition-all">🚲</button>
+                <button type="button" class="goal-emoji-opt p-2 rounded-xl border-2 border-transparent bg-slate-50 transition-all">🎨</button>
+            </div>
+        </div>
+
+        <button id="save-goal-btn" class="w-full bg-emerald-500 text-white font-bold py-3 rounded-2xl shadow-md border-b-4 border-emerald-700 bouncy-btn">
+            บันทึกเป้าหมาย
+        </button>
+    </div>
+</div>
+
+<!-- MODAL 6: SWITCH WALLET CODE -->
+<div id="wallet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border-t-8 border-pink-400 space-y-4 text-center">
+        <span class="text-4xl">🔑</span>
+        <h3 class="font-bold text-slate-800 text-xl">เปลี่ยนรหัสกระเป๋าเงิน</h3>
+        <p class="text-xs text-slate-500">ใส่รหัสกระเป๋าเพื่อแยกหรือเชื่อมกลุ่มบัญชีเงินฝากของครอบครัว</p>
+        
+        <input type="text" id="wallet-code-input" placeholder="เช่น FAMILY123" class="w-full uppercase text-center tracking-widest text-xl font-bold py-3 bg-pink-50 border-2 border-pink-300 rounded-2xl focus:outline-none focus:border-pink-500">
+
+        <div class="flex gap-2">
+            <button id="close-wallet-modal-btn" type="button" class="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl">ยกเลิก</button>
+            <button id="join-wallet-btn" type="button" class="flex-1 bg-pink-500 text-white font-bold py-3 rounded-2xl shadow-md border-b-4 border-pink-700 bouncy-btn">ตกลงเข้าร่วม</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 7: SUPABASE CONNECTION SETTINGS -->
+<div id="supabase-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border-t-8 border-emerald-500 space-y-4">
+        <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i class="fa-solid fa-database text-emerald-600 text-xl"></i> ตั้งค่าเชื่อมต่อ Supabase
+            </h3>
+            <button class="close-modal text-slate-400 hover:text-slate-600 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        
+        <p class="text-xs text-slate-500 leading-relaxed">
+            ใส่ค่า **Project URL** และ **Anon Key** จาก Supabase ของคุณเพื่อเปิดใช้งานการบันทึกแบบ Real-time และแชร์ร่วมกับครอบครัว
+        </p>
+
+        <div class="space-y-3 pt-1">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Supabase Project URL</label>
+                <input type="text" id="sb-url-input" placeholder="https://xxxx.supabase.co" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-emerald-500 font-mono">
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Supabase Anon Key</label>
+                <input type="password" id="sb-key-input" placeholder="eyJhbGciOi..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-emerald-500 font-mono">
+            </div>
+
+            <div class="pt-2 space-y-2">
+                <button id="sb-save-settings-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md bouncy-btn">
+                    <i class="fa-solid fa-plug"></i> เชื่อมต่อ Supabase
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 transition-all opacity-0 pointer-events-none z-50">
+    <span id="toast-icon">✨</span>
+    <span id="toast-msg">ข้อความแจ้งเตือน</span>
+</div>
+
+<script>
+    // Default Base Preset Categories
+    const INITIAL_DEFAULT_CATEGORIES = [
+        { id: 'snack', name: 'ขนม/น้ำ', icon: '🍦', color: 'bg-pink-100 text-pink-600', isDefault: true },
+        { id: 'toy', name: 'ของเล่น', icon: '🧸', color: 'bg-purple-100 text-purple-600', isDefault: true },
+        { id: 'study', name: 'เครื่องเขียน', icon: '📚', color: 'bg-blue-100 text-blue-600', isDefault: true },
+        { id: 'travel', name: 'เดินทาง', icon: '🚌', color: 'bg-amber-100 text-amber-600', isDefault: true },
+        { id: 'game', name: 'เกม/เติมเงิน', icon: '🎮', color: 'bg-indigo-100 text-indigo-600', isDefault: true },
+        { id: 'pocket', name: 'ค่าขนม', icon: '💵', color: 'bg-emerald-100 text-emerald-600', isDefault: true },
+        { id: 'savings', name: 'เงินออม', icon: '🐷', color: 'bg-rose-100 text-rose-600', isDefault: true },
+        { id: 'other', name: 'อื่นๆ', icon: '✨', color: 'bg-slate-100 text-slate-600', isDefault: true }
+    ];
+
+    // Flexible Editable Payment Methods Definition
+    let paymentMethods = {
+        card: { id: 'card', name: 'จ่ายผ่านบัตร', icon: '💳', color: 'bg-purple-100 text-purple-700 border-purple-200', defaultSubDetail: 'บัตรเครดิต AAAA', subPresets: ['บัตรเครดิต AAAA', 'KBank *1234'] },
+        bank: { id: 'bank', name: 'โอนธนาคาร', icon: '🏦', color: 'bg-blue-100 text-blue-700 border-blue-200', defaultSubDetail: 'พร้อมเพย์', subPresets: ['PromptPay', 'SCB Easy'] },
+        cash: { id: 'cash', name: 'เงินสด', icon: '💵', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', defaultSubDetail: 'กระเป๋าเงินสด', subPresets: ['เงินสดกระเป๋าหลัก'] },
+        truemoney: { id: 'truemoney', name: 'TrueMoney', icon: '🟧', color: 'bg-orange-100 text-orange-700 border-orange-200', defaultSubDetail: 'ทรูมันนี่ วอลเล็ท', subPresets: ['ทรูมันนี่ วอลเล็ท'] }
+    };
+
+    // Custom Reusable Detail Preset Tags List (Global Fallback)
+    let subDetailPresets = [
+        'บัตรเครดิต AAAA',
+        'KBank *1234',
+        'SCB Easy',
+        'PromptPay',
+        'เงินสดกระเป๋าหลัก'
+    ];
+
+    // Frequently Used Note/Description Presets List
+    let notePresets = [
+        'ค่าไอศกรีม',
+        'ซื้อสมุดวาดภาพ',
+        'ค่าขนมไปโรงเรียน',
+        'ค่าอาหารกลางวัน',
+        'ค่าเดินทาง'
+    ];
+
+    const THAI_MONTH_NAMES_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const THAI_MONTH_NAMES_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+    // Global Application State
+    let walletId = (localStorage.getItem('kiddie_wallet_id') || 'KIDS123').trim().toUpperCase();
+    let activeMemberId = localStorage.getItem(`kiddie_active_member_${walletId}`) || null;
+    let members = [];
+    let transactions = [];
+    let allCategories = [];
+    let savingsGoal = { title: 'ซื้อของเล่นที่อยากได้', targetAmount: 500, currentAmount: 0, emoji: '🚀' };
+    
+    let editingTxId = null;
+    let editingCatId = null;
+
+    let selectedTxType = 'expense';
+    let selectedPaymentMethod = 'card';
+    let selectedCategory = 'snack';
+    let selectedAvatar = '🐱';
+    let selectedNewCatEmoji = '🍕';
+    let selectedNewCatColor = 'bg-pink-100 text-pink-600';
+
+    // Cascading Filters State
+    let filterMember = 'ALL';
+    let filterMethod = 'ALL';
+    let filterSubDetail = 'ALL';
+    let filterCategory = 'ALL';
+
+    // Month & Date Range Filter State
+    let selectedMonthKey = getCurrentMonthKey();
+    let filterStartDate = '';
+    let filterEndDate = '';
+
+    // Expanded Date Summary Toggle State
+    let expandedDatesSet = new Set();
+
+    // Supabase Client Config
+    let sbUrl = localStorage.getItem('kiddie_sb_url') || '';
+    let sbKey = localStorage.getItem('kiddie_sb_key') || '';
+    let supabaseClient = null;
+    let realtimeChannel = null;
+
+    function initSupabase() {
+        if (sbUrl && sbKey && window.supabase) {
+            try {
+                supabaseClient = window.supabase.createClient(sbUrl, sbKey);
+                return true;
+            } catch (e) {
+                console.error("Supabase Init Error:", e);
+            }
+        }
+        return false;
+    }
+
+    function getCurrentMonthKey() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    }
+
+    function getTodayDateInputValue() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function getMonthKeyFromTimestamp(ts) {
+        const d = new Date(Number(ts));
+        if (isNaN(d)) return '';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    }
+
+    function getDateInputValueFromTimestamp(ts) {
+        const d = new Date(Number(ts));
+        if (isNaN(d)) return getTodayDateInputValue();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function formatMonthKeyThai(monthKey) {
+        if (!monthKey || monthKey === 'ALL') return 'ประวัติทั้งหมด';
+        const [yearStr, monthStr] = monthKey.split('-');
+        const year = parseInt(yearStr);
+        const monthIdx = parseInt(monthStr) - 1;
+        return `${THAI_MONTH_NAMES_FULL[monthIdx]} ${year + 543}`;
+    }
+
+    function formatMonthKeyShortThai(monthKey) {
+        if (!monthKey || monthKey === 'ALL') return 'ทั้งหมด';
+        const [yearStr, monthStr] = monthKey.split('-');
+        const year = parseInt(yearStr);
+        const monthIdx = parseInt(monthStr) - 1;
+        return `${THAI_MONTH_NAMES_SHORT[monthIdx]} ${String(year + 543).slice(-2)}`;
+    }
+
+    function getDateKeyFromTimestamp(ts) {
+        const d = new Date(Number(ts));
+        if (isNaN(d)) return '';
+        const yr = d.getFullYear();
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const dy = String(d.getDate()).padStart(2, '0');
+        return `${yr}-${mo}-${dy}`;
+    }
+
+    function formatFriendlyDateHeader(dateKey) {
+        const todayKey = getDateKeyFromTimestamp(Date.now());
+        const yesterdayObj = new Date();
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterdayKey = getDateKeyFromTimestamp(yesterdayObj.getTime());
+
+        const [yrStr, moStr, dyStr] = dateKey.split('-');
+        const yr = parseInt(yrStr);
+        const moIdx = parseInt(moStr) - 1;
+        const dy = parseInt(dyStr);
+
+        const thaiDateText = `${dy} ${THAI_MONTH_NAMES_SHORT[moIdx]} ${yr + 543}`;
+
+        if (dateKey === todayKey) return `วันนี้ (${thaiDateText})`;
+        if (dateKey === yesterdayKey) return `เมื่อวาน (${thaiDateText})`;
+
+        const dateObj = new Date(yr, moIdx, dy);
+        const daysOfWeek = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+        return `${daysOfWeek[dateObj.getDay()]}ที่ ${thaiDateText}`;
+    }
+
+    function getCategoryById(catId) {
+        return allCategories.find(c => c.id === catId) || allCategories[allCategories.length - 1] || INITIAL_DEFAULT_CATEGORIES[7];
+    }
+
+    function playCuteSound(type = 'pop') {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'pop') {
+                osc.frequency.setValueAtTime(400, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } else if (type === 'coin') {
+                osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+                osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.25);
+            }
+        } catch (e) {}
+    }
+
+    function showToast(msg, icon = '✨') {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        document.getElementById('toast-msg').innerText = msg;
+        document.getElementById('toast-icon').innerText = icon;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'pointer-events-none');
+        }, 2500);
+    }
+
+    function saveToLocalStorage() {
+        try {
+            localStorage.setItem(`kiddie_txs_${walletId}`, JSON.stringify(transactions));
+            localStorage.setItem(`kiddie_members_${walletId}`, JSON.stringify(members));
+            localStorage.setItem(`kiddie_goal_${walletId}`, JSON.stringify(savingsGoal));
+            localStorage.setItem(`kiddie_all_cats_${walletId}`, JSON.stringify(allCategories));
+            localStorage.setItem(`kiddie_pay_methods_${walletId}`, JSON.stringify(paymentMethods));
+            localStorage.setItem(`kiddie_sub_presets_${walletId}`, JSON.stringify(subDetailPresets));
+            localStorage.setItem(`kiddie_note_presets_${walletId}`, JSON.stringify(notePresets));
+        } catch (e) {
+            console.error("LocalStorage save error:", e);
+        }
+    }
+
+    function loadFromLocalStorage() {
+        try {
+            const savedTxs = localStorage.getItem(`kiddie_txs_${walletId}`);
+            transactions = savedTxs ? JSON.parse(savedTxs) : [];
+
+            const savedMem = localStorage.getItem(`kiddie_members_${walletId}`);
+            members = savedMem ? JSON.parse(savedMem) : [];
+
+            const savedGoal = localStorage.getItem(`kiddie_goal_${walletId}`);
+            savingsGoal = savedGoal ? JSON.parse(savedGoal) : { title: 'ซื้อของเล่นที่อยากได้', targetAmount: 500, currentAmount: 0, emoji: '🚀' };
+
+            const savedCats = localStorage.getItem(`kiddie_all_cats_${walletId}`);
+            allCategories = savedCats ? JSON.parse(savedCats) : [...INITIAL_DEFAULT_CATEGORIES];
+
+            const savedMethods = localStorage.getItem(`kiddie_pay_methods_${walletId}`);
+            if (savedMethods) paymentMethods = JSON.parse(savedMethods);
+
+            const savedSubPresets = localStorage.getItem(`kiddie_sub_presets_${walletId}`);
+            if (savedSubPresets) subDetailPresets = JSON.parse(savedSubPresets);
+
+            const savedNotePresets = localStorage.getItem(`kiddie_note_presets_${walletId}`);
+            if (savedNotePresets) notePresets = JSON.parse(savedNotePresets);
+        } catch (e) {
+            console.error("LocalStorage load error:", e);
+        }
+    }
+
+    function renderPresetSubDetailsUI() {
+        const container = document.getElementById('preset-subdetails-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const currentMethod = paymentMethods[selectedPaymentMethod];
+        const presets = (currentMethod && currentMethod.subPresets) ? currentMethod.subPresets : subDetailPresets;
+
+        if (presets.length === 0) {
+            container.innerHTML = `<span class="text-[10px] text-slate-400 p-1">ยังไม่มีตัวเลือก (พิมพ์ในช่องแล้วกด '+เพิ่ม')</span>`;
+            return;
+        }
+
+        presets.forEach(presetText => {
+            const badge = document.createElement('div');
+            badge.className = 'inline-flex items-center gap-1 bg-white hover:bg-purple-100 border border-purple-200 text-purple-700 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-2xs group transition-all';
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'cursor-pointer';
+            textSpan.innerText = presetText;
+            textSpan.onclick = () => {
+                const subInput = document.getElementById('tx-pay-subdetail');
+                if (subInput) {
+                    subInput.value = presetText;
+                    playCuteSound('pop');
+                }
+            };
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.title = 'ลบตัวเลือกนี้';
+            deleteBtn.className = 'text-slate-300 hover:text-rose-500 font-extrabold px-0.5 rounded transition-all';
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeSubDetailPreset(presetText);
+            };
+
+            badge.appendChild(textSpan);
+            badge.appendChild(deleteBtn);
+            container.appendChild(badge);
+        });
+    }
+
+    function renderNotePresetsUI() {
+        const container = document.getElementById('preset-notes-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (notePresets.length === 0) {
+            container.innerHTML = `<span class="text-[10px] text-slate-400 p-1">ยังไม่มีตัวเลือก (พิมพ์บันทึกช่วยจำแล้วกด '+เพิ่มคำนี้ในตัวเลือก')</span>`;
+            return;
+        }
+
+        notePresets.forEach(presetText => {
+            const badge = document.createElement('div');
+            badge.className = 'inline-flex items-center gap-1 bg-white hover:bg-pink-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-2xs group transition-all';
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'cursor-pointer';
+            textSpan.innerText = presetText;
+            textSpan.onclick = () => {
+                const noteInput = document.getElementById('tx-note');
+                if (noteInput) {
+                    noteInput.value = presetText;
+                    playCuteSound('pop');
+                }
+            };
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.title = 'ลบตัวเลือกนี้';
+            deleteBtn.className = 'text-slate-300 hover:text-rose-500 font-extrabold px-1 rounded transition-all';
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeNotePreset(presetText);
+            };
+
+            badge.appendChild(textSpan);
+            badge.appendChild(deleteBtn);
+            container.appendChild(badge);
+        });
+    }
+
+    function addNotePreset(text) {
+        const trimmed = text.trim();
+        if (!trimmed) {
+            showToast("กรุณากรอกบันทึกช่วยจำก่อนกดเพิ่ม!", "⚠️");
+            return;
+        }
+        if (!notePresets.includes(trimmed)) {
+            notePresets.push(trimmed);
+            saveToLocalStorage();
+            renderNotePresetsUI();
+            showToast(`เพิ่ม '${trimmed}' ในตัวเลือกใช้บ่อยแล้ว!`, "⭐");
+            playCuteSound('coin');
+        } else {
+            showToast("ตัวเลือกนี้มีอยู่แล้ว!", "ℹ️");
+        }
+    }
+
+    function removeNotePreset(text) {
+        notePresets = notePresets.filter(p => p !== text);
+        saveToLocalStorage();
+        renderNotePresetsUI();
+        showToast(`ลบ '${text}' ออกแล้ว`, "🗑️");
+        playCuteSound('pop');
+    }
+
+    function addSubDetailPreset(text) {
+        const trimmed = text.trim();
+        if (!trimmed) {
+            showToast("กรุณากรอกข้อความรายละเอียดก่อนกดเพิ่ม!", "⚠️");
+            return;
+        }
+        if (!paymentMethods[selectedPaymentMethod].subPresets) {
+            paymentMethods[selectedPaymentMethod].subPresets = [];
+        }
+        const currentPresets = paymentMethods[selectedPaymentMethod].subPresets;
+
+        if (!currentPresets.includes(trimmed)) {
+            currentPresets.push(trimmed);
+            saveToLocalStorage();
+            renderPresetSubDetailsUI();
+            showToast(`เพิ่ม '${trimmed}' เป็นตัวเลือกแล้ว!`, "📌");
+            playCuteSound('coin');
+        } else {
+            showToast("ตัวเลือกนี้มีอยู่แล้ว!", "ℹ️");
+        }
+    }
+
+    function removeSubDetailPreset(text) {
+        if (paymentMethods[selectedPaymentMethod] && paymentMethods[selectedPaymentMethod].subPresets) {
+            paymentMethods[selectedPaymentMethod].subPresets = paymentMethods[selectedPaymentMethod].subPresets.filter(p => p !== text);
+        }
+        subDetailPresets = subDetailPresets.filter(p => p !== text);
+        saveToLocalStorage();
+        renderPresetSubDetailsUI();
+        showToast(`ลบ '${text}' ออกแล้ว`, "🗑️");
+        playCuteSound('pop');
+    }
+
+    function updateSyncBadgeStatus(status, message) {
+        const badge = document.getElementById('sync-status-badge');
+        const icon = document.getElementById('sync-badge-icon');
+        const text = document.getElementById('sync-badge-text');
+        const tag = document.getElementById('sync-badge-tag');
+
+        if (!badge) return;
+
+        if (status === 'synced') {
+            badge.className = 'flex items-center justify-between bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs text-emerald-800';
+            icon.className = 'fa-solid fa-database text-emerald-600 text-sm';
+            text.innerText = message || 'เชื่อมต่อข้อมูลกับ Supabase แล้ว';
+            tag.className = 'text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold';
+            tag.innerText = 'Supabase Online';
+            document.getElementById('sb-status-text').innerText = 'Connected';
+        } else if (status === 'syncing') {
+            badge.className = 'flex items-center justify-between bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-xs text-amber-800';
+            icon.className = 'fa-solid fa-spinner fa-spin text-amber-600 text-sm';
+            text.innerText = message || 'กำลังดึงข้อมูลจาก Supabase...';
+            tag.className = 'text-[10px] bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold';
+            tag.innerText = 'Syncing...';
+        } else if (status === 'offline') {
+            badge.className = 'flex items-center justify-between bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600';
+            icon.className = 'fa-solid fa-hard-drive text-slate-500 text-sm';
+            text.innerText = message || 'โหมดออฟไลน์ (ยังไม่ได้ต่อ Supabase)';
+            tag.className = 'text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold';
+            tag.innerText = 'Local Storage';
+            document.getElementById('sb-status-text').innerText = 'Config';
+        } else if (status === 'error') {
+            badge.className = 'flex items-center justify-between bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl text-xs text-rose-800';
+            icon.className = 'fa-solid fa-triangle-exclamation text-rose-500 text-sm';
+            text.innerText = message || 'เชื่อมต่อ Supabase ไม่สำเร็จ';
+            tag.className = 'text-[10px] bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold';
+            tag.innerText = 'Error';
+        }
+    }
+
+    async function fetchFromSupabase(silent = false) {
+        if (!initSupabase()) {
+            updateSyncBadgeStatus('offline');
+            return false;
+        }
+
+        if (!silent) updateSyncBadgeStatus('syncing', 'กำลังดึงข้อมูลล่าสุดจาก Supabase...');
+
+        try {
+            const { data: memData } = await supabaseClient.from('members').select('*').eq('wallet_id', walletId);
+            if (memData) members = memData;
+
+            const { data: catData } = await supabaseClient.from('categories').select('*').eq('wallet_id', walletId);
+            if (catData && catData.length > 0) {
+                allCategories = catData.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    icon: c.icon,
+                    color: c.color,
+                    isDefault: c.is_default
+                }));
+            } else {
+                allCategories = [...INITIAL_DEFAULT_CATEGORIES];
+            }
+
+            const { data: txData } = await supabaseClient.from('transactions').select('*').eq('wallet_id', walletId).order('timestamp', { ascending: false });
+            if (txData) {
+                transactions = txData.map(t => ({
+                    id: t.id,
+                    walletId: t.wallet_id,
+                    memberId: t.member_id,
+                    memberName: t.member_name,
+                    memberAvatar: t.member_avatar,
+                    type: t.type,
+                    paymentMethod: t.payment_method,
+                    paymentSubdetail: t.payment_subdetail || '',
+                    category: t.category,
+                    amount: Number(t.amount),
+                    note: t.note,
+                    timestamp: Number(t.timestamp)
+                }));
+            }
+
+            const { data: goalData } = await supabaseClient.from('savings_goals').select('*').eq('wallet_id', walletId).single();
+            if (goalData) {
+                savingsGoal = {
+                    title: goalData.title,
+                    targetAmount: Number(goalData.target_amount),
+                    currentAmount: Number(goalData.current_amount),
+                    emoji: goalData.emoji
+                };
+            }
+
+            saveToLocalStorage();
+            renderMembersUI();
+            renderPaymentMethodGrid();
+            renderPresetSubDetailsUI();
+            renderNotePresetsUI();
+            calculateSharedBalance();
+            renderMonthTabs();
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+            renderGoalUI();
+            renderCategoryGrid();
+
+            updateSyncBadgeStatus('synced', 'อัปเดตข้อมูลผ่าน Supabase เรียบร้อย');
+            if (!silent) showToast("ซิงค์ข้อมูลกับ Supabase สำเร็จ!", "🎉");
+
+            setupRealtimeSubscription();
+            return true;
+        } catch (err) {
+            console.error("Supabase Fetch Error:", err);
+            updateSyncBadgeStatus('error', 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+        }
+        return false;
+    }
+
+    function setupRealtimeSubscription() {
+        if (!supabaseClient) return;
+
+        if (realtimeChannel) {
+            supabaseClient.removeChannel(realtimeChannel);
+        }
+
+        realtimeChannel = supabaseClient.channel('kiddie_wallet_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', filter: `wallet_id=eq.${walletId}` }, () => {
+                fetchFromSupabase(true);
+            })
+            .subscribe();
+    }
+
+    async function initApp() {
+        walletId = (walletId || 'KIDS123').trim().toUpperCase();
+        document.getElementById('wallet-code-display').innerText = `รหัส: ${walletId}`;
+        document.getElementById('wallet-name-tag').innerText = `กระเป๋าเงินกลุ่ม [${walletId}]`;
+
+        loadFromLocalStorage();
+
+        renderMembersUI();
+        renderPaymentMethodGrid();
+        renderPresetSubDetailsUI();
+        renderNotePresetsUI();
+        calculateSharedBalance();
+        renderMonthTabs();
+        renderSpendingBreakdown();
+        renderTransactionsUI();
+        renderGoalUI();
+        renderCategoryGrid();
+
+        document.getElementById('sb-url-input').value = sbUrl;
+        document.getElementById('sb-key-input').value = sbKey;
+
+        // Bind Custom Date Range Event Listeners
+        const startDateInput = document.getElementById('filter-start-date');
+        const endDateInput = document.getElementById('filter-end-date');
+        const clearDateBtn = document.getElementById('clear-custom-date-btn');
+
+        if (startDateInput) {
+            startDateInput.onchange = (e) => {
+                filterStartDate = e.target.value;
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+            };
+        }
+        if (endDateInput) {
+            endDateInput.onchange = (e) => {
+                filterEndDate = e.target.value;
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+            };
+        }
+        if (clearDateBtn) {
+            clearDateBtn.onclick = () => {
+                filterStartDate = '';
+                filterEndDate = '';
+                if (startDateInput) startDateInput.value = '';
+                if (endDateInput) endDateInput.value = '';
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+                showToast("ล้างช่วงวันที่แล้ว", "🔄");
+            };
+        }
+
+        if (sbUrl && sbKey) {
+            await fetchFromSupabase(true);
+        } else {
+            updateSyncBadgeStatus('offline');
+        }
+    }
+
+    function renderPaymentMethodGrid() {
+        const grid = document.getElementById('payment-method-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const keys = Object.keys(paymentMethods);
+        if (!keys.includes(selectedPaymentMethod) && keys.length > 0) {
+            selectedPaymentMethod = keys[0];
+        }
+
+        keys.forEach(mKey => {
+            const method = paymentMethods[mKey];
+            const isSelected = mKey === selectedPaymentMethod;
+            
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.method = mKey;
+            btn.className = `pay-method-btn p-2.5 rounded-2xl border-2 font-bold text-xs flex items-center gap-2 transition-all bouncy-btn ${
+                isSelected ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-xs' : 'border-transparent bg-white text-slate-700 shadow-2xs'
+            }`;
+            
+            btn.innerHTML = `
+                <span class="text-xl shrink-0">${method.icon}</span>
+                <div class="text-left overflow-hidden">
+                    <div class="leading-tight truncate">${method.name}</div>
+                    <div class="text-[9px] ${isSelected ? 'text-purple-500' : 'text-slate-400'} font-normal truncate">${method.defaultSubDetail || 'ช่องทางชำระเงิน'}</div>
+                </div>
+            `;
+
+            btn.onclick = () => {
+                selectedPaymentMethod = mKey;
+                const subInput = document.getElementById('tx-pay-subdetail');
+                if (subInput && (!subInput.value.trim() || subInput.value === paymentMethods[selectedPaymentMethod]?.defaultSubDetail)) {
+                    subInput.value = method.defaultSubDetail || '';
+                }
+                updatePaymentMethodButtons();
+                renderPresetSubDetailsUI();
+                playCuteSound('pop');
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    function updatePaymentMethodButtons() {
+        document.querySelectorAll('.pay-method-btn').forEach(b => {
+            const mKey = b.dataset.method;
+            if (mKey === selectedPaymentMethod) {
+                b.className = 'pay-method-btn p-2.5 rounded-2xl border-2 border-purple-500 bg-purple-50 text-purple-700 font-bold text-xs flex items-center gap-2 transition-all bouncy-btn shadow-xs';
+            } else {
+                b.className = 'pay-method-btn p-2.5 rounded-2xl border-2 border-transparent bg-white text-slate-700 font-bold text-xs flex items-center gap-2 transition-all bouncy-btn shadow-2xs';
+            }
+        });
+    }
+
+    function openManageMethodsModal() {
+        const list = document.getElementById('manage-methods-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        Object.keys(paymentMethods).forEach(mKey => {
+            const m = paymentMethods[mKey];
+            const item = document.createElement('div');
+            item.className = 'p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2';
+            item.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <input type="text" class="m-icon-input w-12 text-center text-lg bg-white border border-slate-300 rounded-xl py-1" value="${m.icon}">
+                    <input type="text" class="m-name-input flex-1 px-2.5 py-1 text-xs font-bold bg-white border border-slate-300 rounded-xl" value="${m.name}">
+                    <button class="save-m-btn text-xs bg-purple-500 text-white px-2.5 py-1 rounded-xl font-bold bouncy-btn" data-key="${mKey}">
+                        บันทึก
+                    </button>
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-500 font-bold">รายละเอียดตั้งต้น:</label>
+                    <input type="text" class="m-sub-input w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-xl mt-0.5" value="${m.defaultSubDetail || ''}" placeholder="รายละเอียด">
+                </div>
+            `;
+
+            item.querySelector('.save-m-btn').onclick = () => {
+                const newIcon = item.querySelector('.m-icon-input').value.trim() || '💳';
+                const newName = item.querySelector('.m-name-input').value.trim() || 'ช่องทางจ่ายเงิน';
+                const newSub = item.querySelector('.m-sub-input').value.trim();
+
+                paymentMethods[mKey] = {
+                    ...paymentMethods[mKey],
+                    icon: newIcon,
+                    name: newName,
+                    defaultSubDetail: newSub
+                };
+
+                saveToLocalStorage();
+                renderPaymentMethodGrid();
+                renderPresetSubDetailsUI();
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+                showToast("อัปเดตช่องทางชำระเงินเรียบร้อย!", "✅");
+            };
+
+            list.appendChild(item);
+        });
+
+        document.getElementById('manage-methods-modal').classList.remove('hidden');
+    }
+
+    function calculateSharedBalance() {
+        let total = 0;
+        let totalSaved = 0;
+        transactions.forEach(t => {
+            const amt = parseFloat(t.amount) || 0;
+            if (t.type === 'income') total += amt;
+            else if (t.type === 'expense') total -= amt;
+            else if (t.type === 'savings') {
+                total -= amt; 
+                totalSaved += amt;
+            }
+        });
+
+        document.getElementById('shared-balance').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        if (savingsGoal.currentAmount !== totalSaved) {
+            savingsGoal.currentAmount = totalSaved;
+            renderGoalUI();
+        }
+    }
+
+    function renderMembersUI() {
+        const container = document.getElementById('users-avatar-list');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (members.length > 0 && (!activeMemberId || !members.some(m => m.id === activeMemberId))) {
+            activeMemberId = members[0].id;
+            localStorage.setItem(`kiddie_active_member_${walletId}`, activeMemberId);
+        }
+
+        if (members.length === 0) {
+            activeMemberId = null;
+            container.innerHTML = `<span class="text-xs text-slate-400 py-1">ยังไม่มีสมาชิก (กด + เพิ่มสมาชิก)</span>`;
+            document.getElementById('current-user-avatar-modal').innerText = '👤';
+            document.getElementById('current-user-name-modal').innerText = 'ยังไม่ได้เลือกสมาชิก';
+            return;
+        }
+
+        members.forEach(m => {
+            const isActive = m.id === activeMemberId;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold transition-all bouncy-btn shrink-0 ${
+                isActive 
+                    ? 'bg-pink-500 text-white shadow-md scale-105 ring-2 ring-white/60' 
+                    : 'bg-white/80 text-slate-700 hover:bg-white border border-pink-100'
+            }`;
+            btn.innerHTML = `<span>${m.avatar}</span><span>${m.name}</span>`;
+            btn.onclick = () => {
+                activeMemberId = m.id;
+                localStorage.setItem(`kiddie_active_member_${walletId}`, activeMemberId);
+                playCuteSound('pop');
+                renderMembersUI();
+            };
+            container.appendChild(btn);
+        });
+
+        const activeMem = members.find(m => m.id === activeMemberId);
+        if (activeMem) {
+            document.getElementById('current-user-avatar-modal').innerText = activeMem.avatar;
+            document.getElementById('current-user-name-modal').innerText = `โดย: ${activeMem.name}`;
+        }
+    }
+
+    function getAvailableMonthKeys() {
+        const keysSet = new Set();
+        keysSet.add(getCurrentMonthKey());
+
+        transactions.forEach(t => {
+            const mk = getMonthKeyFromTimestamp(t.timestamp);
+            if (mk) keysSet.add(mk);
+        });
+
+        return Array.from(keysSet).sort((a, b) => b.localeCompare(a));
+    }
+
+    function renderMonthTabs() {
+        const container = document.getElementById('month-tabs-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const availableMonths = getAvailableMonthKeys();
+
+        const allBtn = document.createElement('button');
+        allBtn.type = 'button';
+        const isAllActive = selectedMonthKey === 'ALL';
+        allBtn.className = `px-3 py-1 rounded-xl text-xs font-bold shrink-0 transition-all bouncy-btn ${
+            isAllActive ? 'bg-pink-500 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`;
+        allBtn.innerText = 'ทั้งหมด';
+        allBtn.onclick = () => {
+            selectedMonthKey = 'ALL';
+            playCuteSound('pop');
+            renderMonthTabs();
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+        };
+        container.appendChild(allBtn);
+
+        availableMonths.forEach(mKey => {
+            const isActive = selectedMonthKey === mKey;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `px-3 py-1 rounded-xl text-xs font-bold shrink-0 transition-all bouncy-btn ${
+                isActive ? 'bg-pink-500 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`;
+            btn.innerText = formatMonthKeyShortThai(mKey);
+            btn.onclick = () => {
+                selectedMonthKey = mKey;
+                playCuteSound('pop');
+                renderMonthTabs();
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+            };
+            container.appendChild(btn);
+        });
+
+        document.getElementById('current-month-display-title').innerText = formatMonthKeyThai(selectedMonthKey);
+    }
+
+    function filterTransactionByRange(t) {
+        const dateKey = getDateKeyFromTimestamp(t.timestamp);
+
+        if (filterStartDate || filterEndDate) {
+            if (filterStartDate && dateKey < filterStartDate) return false;
+            if (filterEndDate && dateKey > filterEndDate) return false;
+            return true;
+        }
+
+        if (selectedMonthKey !== 'ALL') {
+            const mKey = getMonthKeyFromTimestamp(t.timestamp);
+            if (mKey !== selectedMonthKey) return false;
+        }
+        return true;
+    }
+
+    function renderSpendingBreakdown() {
+        const monthTxs = transactions.filter(t => filterTransactionByRange(t));
+
+        // TAB 1: BY MEMBER
+        const memberSpentMap = {};
+        let memberTotalExpense = 0;
+
+        monthTxs.forEach(t => {
+            if (t.type === 'expense') {
+                const amt = parseFloat(t.amount) || 0;
+                memberTotalExpense += amt;
+                if (t.memberId) {
+                    memberSpentMap[t.memberId] = (memberSpentMap[t.memberId] || 0) + amt;
+                }
+            }
+        });
+
+        const memberContainer = document.getElementById('members-progress-bars');
+        memberContainer.innerHTML = '';
+
+        const memberAllSelected = filterMember === 'ALL';
+        const memberAllBtn = document.createElement('div');
+        memberAllBtn.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between bouncy-btn ${
+            memberAllSelected 
+                ? 'border-pink-500 bg-pink-50 text-pink-700 font-bold shadow-xs ring-2 ring-pink-300' 
+                : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-pink-50/50'
+        }`;
+        memberAllBtn.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-base">👥</span>
+                <span class="text-xs">ทุกคน (ทั้งหมด)</span>
+            </div>
+            <div class="text-xs font-bold">
+                ฿${memberTotalExpense.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </div>
+        `;
+        memberAllBtn.onclick = () => {
+            filterMember = 'ALL';
+            filterMethod = 'ALL';
+            filterSubDetail = 'ALL';
+            filterCategory = 'ALL';
+            playCuteSound('pop');
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+        };
+        memberContainer.appendChild(memberAllBtn);
+
+        if (members.length === 0) {
+            const emptyMsg = document.createElement('p');
+            emptyMsg.className = 'text-center text-xs text-slate-400 py-2';
+            emptyMsg.innerText = 'ยังไม่มีสมาชิก';
+            memberContainer.appendChild(emptyMsg);
+        } else {
+            members.forEach(m => {
+                const spent = memberSpentMap[m.id] || 0;
+                const percent = memberTotalExpense > 0 ? Math.round((spent / memberTotalExpense) * 100) : 0;
+                const isSelected = filterMember === m.id;
+
+                const item = document.createElement('div');
+                item.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer space-y-1 bouncy-btn ${
+                    isSelected 
+                        ? 'border-pink-500 bg-pink-50 shadow-xs ring-2 ring-pink-300' 
+                        : 'border-slate-100 bg-white hover:bg-pink-50/40'
+                }`;
+                item.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold">
+                        <span class="flex items-center gap-1 text-slate-800">${m.avatar} ${m.name}</span>
+                        <span class="text-slate-600 font-bold">฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span class="text-slate-400 font-normal">(${percent}%)</span></span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="bg-pink-400 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                item.onclick = () => {
+                    filterMember = m.id;
+                    filterMethod = 'ALL';
+                    filterSubDetail = 'ALL';
+                    filterCategory = 'ALL';
+                    playCuteSound('pop');
+                    renderSpendingBreakdown();
+                    renderTransactionsUI();
+                };
+                memberContainer.appendChild(item);
+            });
+        }
+
+        // TAB 2: BY PAYMENT METHOD
+        const methodFilteredTxs = monthTxs.filter(t => {
+            if (filterMember !== 'ALL' && t.memberId !== filterMember) return false;
+            return true;
+        });
+
+        const methodSpentMap = {};
+        let methodTotalExpense = 0;
+
+        methodFilteredTxs.forEach(t => {
+            if (t.type === 'expense') {
+                const amt = parseFloat(t.amount) || 0;
+                methodTotalExpense += amt;
+                const methodKey = t.paymentMethod || 'card';
+                methodSpentMap[methodKey] = (methodSpentMap[methodKey] || 0) + amt;
+            }
+        });
+
+        const methodContainer = document.getElementById('methods-progress-bars');
+        methodContainer.innerHTML = '';
+
+        const methodAllSelected = filterMethod === 'ALL';
+        const methodAllBtn = document.createElement('div');
+        methodAllBtn.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between bouncy-btn ${
+            methodAllSelected 
+                ? 'border-purple-500 bg-purple-50 text-purple-700 font-bold shadow-xs ring-2 ring-purple-300' 
+                : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-purple-50/50'
+        }`;
+        methodAllBtn.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-base">💳</span>
+                <span class="text-xs">ทุกวิธีจ่ายเงิน</span>
+            </div>
+            <div class="text-xs font-bold">
+                ฿${methodTotalExpense.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </div>
+        `;
+        methodAllBtn.onclick = () => {
+            filterMethod = 'ALL';
+            filterSubDetail = 'ALL';
+            filterCategory = 'ALL';
+            playCuteSound('pop');
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+        };
+        methodContainer.appendChild(methodAllBtn);
+
+        Object.keys(paymentMethods).forEach(mKey => {
+            const methodInfo = paymentMethods[mKey];
+            const spent = methodSpentMap[mKey] || 0;
+            const percent = methodTotalExpense > 0 ? Math.round((spent / methodTotalExpense) * 100) : 0;
+            const isSelected = filterMethod === mKey;
+
+            const item = document.createElement('div');
+            item.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer space-y-1 bouncy-btn ${
+                isSelected 
+                    ? 'border-purple-500 bg-purple-50 shadow-xs ring-2 ring-purple-300' 
+                    : 'border-slate-100 bg-white hover:bg-purple-50/40'
+            }`;
+            item.innerHTML = `
+                <div class="flex justify-between text-xs font-semibold">
+                    <span class="flex items-center gap-1.5 text-slate-800">
+                        <span>${methodInfo.icon}</span>
+                        <span>${methodInfo.name}</span>
+                    </span>
+                    <span class="text-slate-600 font-bold">฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span class="text-slate-400 font-normal">(${percent}%)</span></span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div class="bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                </div>
+            `;
+            item.onclick = () => {
+                filterMethod = mKey;
+                filterSubDetail = 'ALL';
+                filterCategory = 'ALL';
+                playCuteSound('pop');
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+            };
+            methodContainer.appendChild(item);
+        });
+
+        // TAB 3: BY DETAILS SUMMARY
+        const subdetailFilteredTxs = monthTxs.filter(t => {
+            if (filterMember !== 'ALL' && t.memberId !== filterMember) return false;
+            if (filterMethod !== 'ALL' && (t.paymentMethod || 'card') !== filterMethod) return false;
+            return true;
+        });
+
+        const subdetailSpentMap = {};
+        let subdetailTotalExpense = 0;
+
+        subdetailFilteredTxs.forEach(t => {
+            if (t.type === 'expense') {
+                const amt = parseFloat(t.amount) || 0;
+                subdetailTotalExpense += amt;
+                const subKey = t.paymentSubdetail ? t.paymentSubdetail.trim() : 'ไม่ระบุรายละเอียด';
+                subdetailSpentMap[subKey] = (subdetailSpentMap[subKey] || 0) + amt;
+            }
+        });
+
+        const subdetailContainer = document.getElementById('subdetails-progress-bars');
+        subdetailContainer.innerHTML = '';
+
+        const subAllSelected = filterSubDetail === 'ALL';
+        const subAllBtn = document.createElement('div');
+        subAllBtn.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between bouncy-btn ${
+            subAllSelected 
+                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-bold shadow-xs ring-2 ring-indigo-300' 
+                : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-indigo-50/50'
+        }`;
+        subAllBtn.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-base">📌</span>
+                <span class="text-xs">ทุกรายละเอียด</span>
+            </div>
+            <div class="text-xs font-bold">
+                ฿${subdetailTotalExpense.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </div>
+        `;
+        subAllBtn.onclick = () => {
+            filterSubDetail = 'ALL';
+            filterCategory = 'ALL';
+            playCuteSound('pop');
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+        };
+        subdetailContainer.appendChild(subAllBtn);
+
+        const sortedSubKeys = Object.keys(subdetailSpentMap).sort((a, b) => subdetailSpentMap[b] - subdetailSpentMap[a]);
+
+        if (sortedSubKeys.length === 0) {
+            const emptyMsg = document.createElement('p');
+            emptyMsg.className = 'text-center text-xs text-slate-400 py-3';
+            emptyMsg.innerText = 'ยังไม่มีรายการใช้จ่ายผ่านรายละเอียดในตัวกรองนี้';
+            subdetailContainer.appendChild(emptyMsg);
+        } else {
+            sortedSubKeys.forEach(subKey => {
+                const spent = subdetailSpentMap[subKey] || 0;
+                const percent = subdetailTotalExpense > 0 ? Math.round((spent / subdetailTotalExpense) * 100) : 0;
+                const isSelected = filterSubDetail === subKey;
+
+                const item = document.createElement('div');
+                item.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer space-y-1 bouncy-btn ${
+                    isSelected 
+                        ? 'border-indigo-500 bg-indigo-50 shadow-xs ring-2 ring-indigo-300' 
+                        : 'border-slate-100 bg-white hover:bg-indigo-50/40'
+                }`;
+                item.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold">
+                        <span class="flex items-center gap-1.5 text-slate-800 truncate max-w-[210px]">
+                            <span class="text-indigo-500 font-bold">📌</span>
+                            <span class="truncate">${subKey}</span>
+                        </span>
+                        <span class="text-slate-600 font-bold">฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span class="text-slate-400 font-normal">(${percent}%)</span></span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                item.onclick = () => {
+                    filterSubDetail = subKey;
+                    filterCategory = 'ALL';
+                    playCuteSound('pop');
+                    renderSpendingBreakdown();
+                    renderTransactionsUI();
+                };
+                subdetailContainer.appendChild(item);
+            });
+        }
+
+        // TAB 4: BY CATEGORY
+        const categoryFilteredTxs = monthTxs.filter(t => {
+            if (filterMember !== 'ALL' && t.memberId !== filterMember) return false;
+            if (filterMethod !== 'ALL' && (t.paymentMethod || 'card') !== filterMethod) return false;
+            if (filterSubDetail !== 'ALL' && (t.paymentSubdetail ? t.paymentSubdetail.trim() : 'ไม่ระบุรายละเอียด') !== filterSubDetail) return false;
+            return true;
+        });
+
+        const catSpentMap = {};
+        let catTotalExpense = 0;
+
+        categoryFilteredTxs.forEach(t => {
+            if (t.type === 'expense') {
+                const amt = parseFloat(t.amount) || 0;
+                catTotalExpense += amt;
+                const catKey = t.category || 'other';
+                catSpentMap[catKey] = (catSpentMap[catKey] || 0) + amt;
+            }
+        });
+
+        const catContainer = document.getElementById('categories-progress-bars');
+        catContainer.innerHTML = '';
+
+        const catAllSelected = filterCategory === 'ALL';
+        const catAllBtn = document.createElement('div');
+        catAllBtn.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between bouncy-btn ${
+            catAllSelected 
+                ? 'border-amber-500 bg-amber-50 text-amber-700 font-bold shadow-xs ring-2 ring-amber-300' 
+                : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-amber-50/50'
+        }`;
+        catAllBtn.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-base">🏷️</span>
+                <span class="text-xs">ทุกหมวดหมู่</span>
+            </div>
+            <div class="text-xs font-bold">
+                ฿${catTotalExpense.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </div>
+        `;
+        catAllBtn.onclick = () => {
+            filterCategory = 'ALL';
+            playCuteSound('pop');
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+        };
+        catContainer.appendChild(catAllBtn);
+
+        const sortedCatKeys = Object.keys(catSpentMap).sort((a, b) => catSpentMap[b] - catSpentMap[a]);
+
+        if (sortedCatKeys.length === 0) {
+            const emptyMsg = document.createElement('p');
+            emptyMsg.className = 'text-center text-xs text-slate-400 py-3';
+            emptyMsg.innerText = 'ยังไม่มีรายการใช้จ่ายตามหมวดหมู่ในตัวกรองนี้';
+            catContainer.appendChild(emptyMsg);
+        } else {
+            sortedCatKeys.forEach(catKey => {
+                const catObj = getCategoryById(catKey);
+                const spent = catSpentMap[catKey] || 0;
+                const percent = catTotalExpense > 0 ? Math.round((spent / catTotalExpense) * 100) : 0;
+                const isSelected = filterCategory === catKey;
+
+                const item = document.createElement('div');
+                item.className = `p-2 rounded-2xl border-2 transition-all cursor-pointer space-y-1 bouncy-btn ${
+                    isSelected 
+                        ? 'border-amber-500 bg-amber-50 shadow-xs ring-2 ring-amber-300' 
+                        : 'border-slate-100 bg-white hover:bg-amber-50/40'
+                }`;
+                item.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold">
+                        <span class="flex items-center gap-1.5 text-slate-800 truncate max-w-[210px]">
+                            <span>${catObj.icon}</span>
+                            <span class="truncate">${catObj.name}</span>
+                        </span>
+                        <span class="text-slate-600 font-bold">฿${spent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span class="text-slate-400 font-normal">(${percent}%)</span></span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                item.onclick = () => {
+                    filterCategory = catKey;
+                    playCuteSound('pop');
+                    renderSpendingBreakdown();
+                    renderTransactionsUI();
+                };
+                catContainer.appendChild(item);
+            });
+        }
+    }
+
+    function updateActiveFiltersBarUI() {
+        const bar = document.getElementById('active-filters-bar');
+        if (!bar) return;
+
+        const hasMember = filterMember !== 'ALL';
+        const hasMethod = filterMethod !== 'ALL';
+        const hasSubDetail = filterSubDetail !== 'ALL';
+        const hasCategory = filterCategory !== 'ALL';
+
+        if (hasMember || hasMethod || hasSubDetail || hasCategory) {
+            bar.classList.remove('hidden');
+
+            const tagMem = document.getElementById('filter-tag-member');
+            const tagMet = document.getElementById('filter-tag-method');
+            const tagSub = document.getElementById('filter-tag-subdetail');
+            const tagCat = document.getElementById('filter-tag-category');
+
+            if (tagMem) {
+                if (hasMember) {
+                    const m = members.find(x => x.id === filterMember);
+                    tagMem.innerText = `สมาชิก: ${m ? m.name : filterMember}`;
+                    tagMem.classList.remove('hidden');
+                } else tagMem.classList.add('hidden');
+            }
+
+            if (tagMet) {
+                if (hasMethod) {
+                    const met = paymentMethods[filterMethod];
+                    tagMet.innerText = `วิธีจ่าย: ${met ? met.name : filterMethod}`;
+                    tagMet.classList.remove('hidden');
+                } else tagMet.classList.add('hidden');
+            }
+
+            if (tagSub) {
+                if (hasSubDetail) {
+                    tagSub.innerText = `รายละเอียด: ${filterSubDetail}`;
+                    tagSub.classList.remove('hidden');
+                } else tagSub.classList.add('hidden');
+            }
+
+            if (tagCat) {
+                if (hasCategory) {
+                    const c = getCategoryById(filterCategory);
+                    tagCat.innerText = `หมวดหมู่: ${c ? c.name : filterCategory}`;
+                    tagCat.classList.remove('hidden');
+                } else tagCat.classList.add('hidden');
+            }
+        } else {
+            bar.classList.add('hidden');
+        }
+    }
+
+    function toggleDateExpand(dateKey) {
+        if (expandedDatesSet.has(dateKey)) {
+            expandedDatesSet.delete(dateKey);
+        } else {
+            expandedDatesSet.add(dateKey);
+        }
+        playCuteSound('pop');
+        renderTransactionsUI();
+    }
+
+    function toggleAllDaysExpand(allDateKeys) {
+        if (expandedDatesSet.size >= allDateKeys.length) {
+            expandedDatesSet.clear();
+        } else {
+            allDateKeys.forEach(k => expandedDatesSet.add(k));
+        }
+        playCuteSound('pop');
+        renderTransactionsUI();
+    }
+
+    function renderTransactionsUI() {
+        const listContainer = document.getElementById('transactions-list');
+        const txCountBadge = document.getElementById('tx-count-badge');
+
+        if (!listContainer) return;
+
+        // Filter transactions based on date range / selected month AND active filters
+        let filtered = transactions.filter(t => filterTransactionByRange(t));
+
+        // Apply cascading filters
+        if (filterMember !== 'ALL') {
+            filtered = filtered.filter(t => t.memberId === filterMember);
+        }
+        if (filterMethod !== 'ALL') {
+            filtered = filtered.filter(t => (t.paymentMethod || 'card') === filterMethod);
+        }
+        if (filterSubDetail !== 'ALL') {
+            filtered = filtered.filter(t => (t.paymentSubdetail ? t.paymentSubdetail.trim() : 'ไม่ระบุรายละเอียด') === filterSubDetail);
+        }
+        if (filterCategory !== 'ALL') {
+            filtered = filtered.filter(t => (t.category || 'other') === filterCategory);
+        }
+
+        // Update active filters bar UI
+        updateActiveFiltersBarUI();
+
+        // Update total count badge
+        if (txCountBadge) {
+            txCountBadge.innerText = `${filtered.length} รายการ`;
+        }
+
+        // Total spent tag on dashboard summary
+        let totalSpentFiltered = 0;
+        filtered.forEach(t => {
+            if (t.type === 'expense') totalSpentFiltered += (parseFloat(t.amount) || 0);
+        });
+        const totalSpentTag = document.getElementById('total-spent-tag');
+        if (totalSpentTag) {
+            totalSpentTag.innerText = `รวมใช้ไป: ฿${totalSpentFiltered.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+        }
+
+        if (filtered.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-10 bg-white rounded-3xl border-2 border-dashed border-pink-200 p-6 space-y-2">
+                    <div class="text-4xl">🎈</div>
+                    <p class="font-bold text-slate-600 text-sm">ยังไม่มีรายการในเงื่อนไขที่เลือก</p>
+                    <p class="text-xs text-slate-400">ลองกดปุ่ม "+ บันทึก" เพื่อเพิ่มรายการใหม่ หรือล้างตัวกรอง</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Group filtered transactions by date (YYYY-MM-DD)
+        const groups = {};
+        filtered.forEach(t => {
+            const dKey = getDateKeyFromTimestamp(t.timestamp);
+            if (!groups[dKey]) groups[dKey] = [];
+            groups[dKey].push(t);
+        });
+
+        // Sort date keys descending (newest day first)
+        const sortedDateKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+        // Bind Toggle All Days Button
+        const toggleAllBtn = document.getElementById('toggle-all-days-btn');
+        if (toggleAllBtn) {
+            toggleAllBtn.onclick = () => toggleAllDaysExpand(sortedDateKeys);
+        }
+
+        listContainer.innerHTML = '';
+
+        // Render each daily summary card
+        sortedDateKeys.forEach(dateKey => {
+            const dayTxs = groups[dateKey];
+            
+            // Calculate daily totals
+            let dayExpense = 0;
+            let dayIncome = 0;
+            let daySavings = 0;
+
+            dayTxs.forEach(t => {
+                const amt = parseFloat(t.amount) || 0;
+                if (t.type === 'expense') dayExpense += amt;
+                else if (t.type === 'income') dayIncome += amt;
+                else if (t.type === 'savings') daySavings += amt;
+            });
+
+            const isExpanded = expandedDatesSet.has(dateKey);
+
+            // Daily Summary Card Wrapper
+            const dayCard = document.createElement('div');
+            dayCard.className = `bg-white rounded-2xl border-2 transition-all overflow-hidden ${
+                isExpanded ? 'border-pink-300 shadow-md ring-1 ring-pink-200' : 'border-pink-100 shadow-xs hover:border-pink-200'
+            }`;
+
+            // Header Row (Default View: Daily Total)
+            const dayHeader = document.createElement('div');
+            dayHeader.className = `p-3 flex items-center justify-between cursor-pointer transition-colors bouncy-btn select-none ${
+                isExpanded ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-100' : 'bg-white hover:bg-pink-50/40'
+            }`;
+
+            const headerTitleText = formatFriendlyDateHeader(dateKey);
+
+            dayHeader.innerHTML = `
+                <div class="flex items-center gap-2.5 overflow-hidden">
+                    <div class="w-8 h-8 rounded-xl ${isExpanded ? 'bg-pink-500 text-white shadow-xs scale-105' : 'bg-pink-100 text-pink-600'} flex items-center justify-center font-bold text-xs shrink-0 transition-all">
+                        <i class="fa-solid ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'} text-xs"></i>
+                    </div>
+                    <div class="overflow-hidden">
+                        <h4 class="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5 truncate">
+                            <span>${headerTitleText}</span>
+                            <span class="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full shrink-0">${dayTxs.length} รายการ</span>
+                        </h4>
+                        <div class="flex items-center gap-2 text-[10px] font-medium mt-0.5 flex-wrap">
+                            ${dayExpense > 0 ? `<span class="text-rose-500 font-bold">จ่าย: ฿${dayExpense.toLocaleString('th-TH')}</span>` : ''}
+                            ${dayIncome > 0 ? `<span class="text-emerald-600 font-bold">รับ: ฿${dayIncome.toLocaleString('th-TH')}</span>` : ''}
+                            ${daySavings > 0 ? `<span class="text-amber-600 font-bold">ออม: ฿${daySavings.toLocaleString('th-TH')}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right shrink-0 ml-2">
+                    <div class="text-xs sm:text-sm font-bold ${dayExpense > 0 ? 'text-rose-500' : dayIncome > 0 ? 'text-emerald-600' : 'text-slate-700'}">
+                        ${dayExpense > 0 ? `-฿${dayExpense.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 2})}` : dayIncome > 0 ? `+฿${dayIncome.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 2})}` : `฿0`}
+                    </div>
+                    <div class="text-[9px] text-pink-500 font-bold flex items-center justify-end gap-0.5 mt-0.5">
+                        <span>${isExpanded ? 'ซ่อนย่อย 🔼' : 'กดดูย่อย 🔽'}</span>
+                    </div>
+                </div>
+            `;
+
+            dayHeader.onclick = () => toggleDateExpand(dateKey);
+            dayCard.appendChild(dayHeader);
+
+            // Detailed Transaction Items Container (Shown when expanded)
+            if (isExpanded) {
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'p-3 space-y-2.5 bg-slate-50/50 divide-y divide-slate-100/80';
+
+                dayTxs.forEach(tx => {
+                    const catObj = getCategoryById(tx.category);
+                    const payMethod = paymentMethods[tx.paymentMethod] || paymentMethods['card'];
+                    
+                    const txRow = document.createElement('div');
+                    txRow.className = 'pt-2.5 first:pt-0 flex items-center justify-between gap-2';
+
+                    let typeColorClass = 'text-rose-500';
+                    let signPrefix = '-';
+                    if (tx.type === 'income') {
+                        typeColorClass = 'text-emerald-600';
+                        signPrefix = '+';
+                    } else if (tx.type === 'savings') {
+                        typeColorClass = 'text-amber-600';
+                        signPrefix = '🐷 ';
+                    }
+
+                    txRow.innerHTML = `
+                        <div class="flex items-center gap-2.5 overflow-hidden">
+                            <div class="w-9 h-9 rounded-2xl ${catObj.color || 'bg-pink-100 text-pink-600'} flex items-center justify-center text-lg shrink-0 shadow-2xs">
+                                ${catObj.icon || '✨'}
+                            </div>
+                            <div class="overflow-hidden">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-bold text-xs text-slate-800 truncate max-w-[150px] sm:max-w-[180px]">${tx.note || catObj.name}</span>
+                                    <span class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded-md font-medium shrink-0 flex items-center gap-0.5">
+                                        <span>${tx.memberAvatar || '👤'}</span> <span>${tx.memberName || 'สมาชิก'}</span>
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5 flex-wrap">
+                                    <span class="bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.2 rounded-md font-semibold flex items-center gap-1">
+                                        <span>${payMethod.icon}</span> <span>${payMethod.name}</span>
+                                    </span>
+                                    ${tx.paymentSubdetail ? `<span class="text-purple-600 font-bold bg-purple-100/60 px-1.5 py-0.2 rounded-md truncate max-w-[120px]">📌 ${tx.paymentSubdetail}</span>` : ''}
+                                    <span class="text-slate-400 text-[9px]">${new Date(tx.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <div class="text-right">
+                                <div class="font-bold text-xs sm:text-sm ${typeColorClass}">
+                                    ${signPrefix}฿${parseFloat(tx.amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                                <div class="text-[9px] text-slate-400 font-medium">${catObj.name}</div>
+                            </div>
+                            <div class="flex items-center gap-0.5 pl-1 border-l border-slate-200/60">
+                                <button class="edit-tx-btn text-slate-400 hover:text-pink-500 text-xs w-6 h-6 rounded-lg hover:bg-pink-50 flex items-center justify-center bouncy-btn" title="แก้ไข">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button class="delete-tx-btn text-slate-400 hover:text-rose-500 text-xs w-6 h-6 rounded-lg hover:bg-rose-50 flex items-center justify-center bouncy-btn" title="ลบ">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Bind Edit and Delete events
+                    txRow.querySelector('.edit-tx-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        openEditTransactionModal(tx.id);
+                    };
+
+                    txRow.querySelector('.delete-tx-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        deleteTransaction(tx.id);
+                    };
+
+                    detailsDiv.appendChild(txRow);
+                });
+
+                dayCard.appendChild(detailsDiv);
+            }
+
+            listContainer.appendChild(dayCard);
+        });
+    }
+
+    function renderGoalUI() {
+        document.getElementById('goal-emoji').innerText = savingsGoal.emoji || '🚀';
+        document.getElementById('goal-title').innerText = savingsGoal.title || 'ภารกิจออมเงิน';
+        document.getElementById('goal-current').innerText = savingsGoal.currentAmount.toLocaleString('th-TH');
+        document.getElementById('goal-target').innerText = savingsGoal.targetAmount.toLocaleString('th-TH');
+
+        const percent = Math.min(100, Math.round((savingsGoal.currentAmount / savingsGoal.targetAmount) * 100));
+        document.getElementById('goal-progress-bar').style.width = `${percent}%`;
+    }
+
+    function renderCategoryGrid() {
+        const grid = document.getElementById('category-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        allCategories.forEach(cat => {
+            const isSelected = cat.id === selectedCategory;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `p-2 rounded-2xl flex flex-col items-center justify-center text-center transition-all bouncy-btn relative ${cat.color || 'bg-pink-100 text-pink-600'} ${
+                isSelected ? 'ring-2 ring-pink-500 scale-105 shadow-md font-bold' : 'opacity-85 hover:opacity-100'
+            }`;
+
+            btn.innerHTML = `
+                <span class="text-2xl">${cat.icon}</span>
+                <span class="text-[10px] truncate max-w-full font-semibold mt-0.5">${cat.name}</span>
+            `;
+
+            btn.onclick = () => {
+                selectedCategory = cat.id;
+                renderCategoryGrid();
+                playCuteSound('pop');
+            };
+
+            // Double click / Long press to edit category
+            btn.ondblclick = (e) => {
+                e.stopPropagation();
+                openEditCategoryModal(cat.id);
+            };
+
+            grid.appendChild(btn);
+        });
+    }
+
+    function openAddTransactionModal() {
+        editingTxId = null;
+        document.getElementById('tx-modal-title').innerText = 'บันทึกรายการใหม่';
+        document.getElementById('save-tx-btn-text').innerText = 'บันทึกรายการ';
+        document.getElementById('tx-amount').value = '';
+        document.getElementById('tx-note').value = '';
+        document.getElementById('tx-date').value = getTodayDateInputValue();
+
+        const currentMethod = paymentMethods[selectedPaymentMethod];
+        document.getElementById('tx-pay-subdetail').value = (currentMethod && currentMethod.defaultSubDetail) ? currentMethod.defaultSubDetail : '';
+
+        renderPresetSubDetailsUI();
+        renderNotePresetsUI();
+        renderCategoryGrid();
+
+        document.getElementById('add-tx-modal').classList.remove('hidden');
+    }
+
+    function openEditTransactionModal(txId) {
+        const tx = transactions.find(t => t.id === txId);
+        if (!tx) return;
+
+        editingTxId = txId;
+        document.getElementById('tx-modal-title').innerText = 'แก้ไขรายการ';
+        document.getElementById('save-tx-btn-text').innerText = 'อัปเดตรายการ';
+
+        selectedTxType = tx.type;
+        selectedPaymentMethod = tx.paymentMethod || 'card';
+        selectedCategory = tx.category || 'other';
+
+        document.getElementById('tx-amount').value = tx.amount;
+        document.getElementById('tx-note').value = tx.note || '';
+        document.getElementById('tx-date').value = getDateInputValueFromTimestamp(tx.timestamp);
+        document.getElementById('tx-pay-subdetail').value = tx.paymentSubdetail || '';
+
+        updatePaymentMethodButtons();
+        renderPresetSubDetailsUI();
+        renderNotePresetsUI();
+        renderCategoryGrid();
+
+        document.getElementById('add-tx-modal').classList.remove('hidden');
+    }
+
+    async function saveTransaction() {
+        const amountVal = parseFloat(document.getElementById('tx-amount').value);
+        if (isNaN(amountVal) || amountVal <= 0) {
+            showToast("กรุณาระบุจำนวนเงินให้ถูกต้อง!", "⚠️");
+            return;
+        }
+
+        const noteVal = document.getElementById('tx-note').value.trim();
+        const dateVal = document.getElementById('tx-date').value;
+        const subdetailVal = document.getElementById('tx-pay-subdetail').value.trim();
+
+        let txTimestamp = Date.now();
+        if (dateVal) {
+            const [yr, mo, dy] = dateVal.split('-').map(Number);
+            const dObj = new Date(yr, mo - 1, dy, 12, 0, 0);
+            txTimestamp = dObj.getTime();
+        }
+
+        const activeMem = members.find(m => m.id === activeMemberId) || { id: 'default', name: 'สมาชิก', avatar: '👤' };
+
+        const txPayload = {
+            id: editingTxId || `tx_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            walletId: walletId,
+            memberId: activeMem.id,
+            memberName: activeMem.name,
+            memberAvatar: activeMem.avatar,
+            type: selectedTxType,
+            paymentMethod: selectedPaymentMethod,
+            paymentSubdetail: subdetailVal,
+            category: selectedCategory,
+            amount: amountVal,
+            note: noteVal,
+            timestamp: txTimestamp
+        };
+
+        if (editingTxId) {
+            const idx = transactions.findIndex(t => t.id === editingTxId);
+            if (idx !== -1) transactions[idx] = txPayload;
+        } else {
+            transactions.unshift(txPayload);
+        }
+
+        saveToLocalStorage();
+        calculateSharedBalance();
+        renderMonthTabs();
+        renderSpendingBreakdown();
+        renderTransactionsUI();
+
+        document.getElementById('add-tx-modal').classList.add('hidden');
+        showToast(editingTxId ? "อัปเดตรายการเรียบร้อย!" : "บันทึกรายการสำเร็จ!", "🎉");
+        playCuteSound('coin');
+
+        // Sync to Supabase if connected
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('transactions').upsert({
+                    id: txPayload.id,
+                    wallet_id: txPayload.walletId,
+                    member_id: txPayload.memberId,
+                    member_name: txPayload.memberName,
+                    member_avatar: txPayload.memberAvatar,
+                    type: txPayload.type,
+                    payment_method: txPayload.paymentMethod,
+                    payment_subdetail: txPayload.paymentSubdetail,
+                    category: txPayload.category,
+                    amount: txPayload.amount,
+                    note: txPayload.note,
+                    timestamp: txPayload.timestamp
+                });
+            } catch (e) {
+                console.error("Supabase Save Error:", e);
+            }
+        }
+    }
+
+    async function deleteTransaction(txId) {
+        transactions = transactions.filter(t => t.id !== txId);
+        saveToLocalStorage();
+        calculateSharedBalance();
+        renderMonthTabs();
+        renderSpendingBreakdown();
+        renderTransactionsUI();
+        showToast("ลบรายการเรียบร้อยแล้ว", "🗑️");
+        playCuteSound('pop');
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('transactions').delete().eq('id', txId);
+            } catch (e) {
+                console.error("Supabase Delete Error:", e);
+            }
+        }
+    }
+
+    function openAddCategoryModal() {
+        editingCatId = null;
+        document.getElementById('cat-modal-title').innerText = 'สร้างหมวดหมู่ใหม่';
+        document.getElementById('cat-btn-text').innerText = 'สร้างหมวดหมู่ใหม่';
+        document.getElementById('new-cat-name').value = '';
+        document.getElementById('custom-cat-emoji-input').value = '';
+        document.getElementById('delete-cat-btn').classList.add('hidden');
+
+        selectedNewCatEmoji = '🍕';
+        selectedNewCatColor = 'bg-pink-100 text-pink-600';
+        updateCategoryPreviewUI();
+
+        document.getElementById('add-category-modal').classList.remove('hidden');
+    }
+
+    function openEditCategoryModal(catId) {
+        const cat = getCategoryById(catId);
+        if (!cat) return;
+
+        editingCatId = catId;
+        document.getElementById('cat-modal-title').innerText = 'แก้ไขหมวดหมู่';
+        document.getElementById('cat-btn-text').innerText = 'อัปเดตหมวดหมู่';
+        document.getElementById('new-cat-name').value = cat.name;
+        document.getElementById('custom-cat-emoji-input').value = cat.icon;
+        document.getElementById('delete-cat-btn').classList.remove('hidden');
+
+        selectedNewCatEmoji = cat.icon;
+        selectedNewCatColor = cat.color;
+        updateCategoryPreviewUI();
+
+        document.getElementById('add-category-modal').classList.remove('hidden');
+    }
+
+    function updateCategoryPreviewUI() {
+        const previewEmoji = document.getElementById('cat-preview-emoji');
+        const previewName = document.getElementById('cat-preview-name');
+        const previewBadge = document.getElementById('cat-preview-badge');
+
+        const nameInput = document.getElementById('new-cat-name').value.trim() || 'ชื่อหมวดหมู่';
+
+        previewEmoji.innerText = selectedNewCatEmoji;
+        previewName.innerText = nameInput;
+        previewBadge.className = `px-4 py-2 rounded-2xl flex items-center gap-2 text-sm font-bold shadow-xs ${selectedNewCatColor}`;
+    }
+
+    async function saveCustomCategory() {
+        const nameVal = document.getElementById('new-cat-name').value.trim();
+        if (!nameVal) {
+            showToast("กรุณาระบุชื่อหมวดหมู่!", "⚠️");
+            return;
+        }
+
+        const catPayload = {
+            id: editingCatId || `cat_${Date.now()}`,
+            name: nameVal,
+            icon: selectedNewCatEmoji,
+            color: selectedNewCatColor,
+            isDefault: false
+        };
+
+        if (editingCatId) {
+            const idx = allCategories.findIndex(c => c.id === editingCatId);
+            if (idx !== -1) allCategories[idx] = catPayload;
+        } else {
+            allCategories.push(catPayload);
+        }
+
+        saveToLocalStorage();
+        renderCategoryGrid();
+        renderSpendingBreakdown();
+        renderTransactionsUI();
+
+        document.getElementById('add-category-modal').classList.add('hidden');
+        showToast(editingCatId ? "อัปเดตหมวดหมู่สำเร็จ!" : "สร้างหมวดหมู่ใหม่สำเร็จ!", "🎉");
+        playCuteSound('coin');
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('categories').upsert({
+                    id: catPayload.id,
+                    wallet_id: walletId,
+                    name: catPayload.name,
+                    icon: catPayload.icon,
+                    color: catPayload.color,
+                    is_default: catPayload.isDefault
+                });
+            } catch (e) {
+                console.error("Supabase Cat Save Error:", e);
+            }
+        }
+    }
+
+    async function deleteCategory() {
+        if (!editingCatId) return;
+
+        allCategories = allCategories.filter(c => c.id !== editingCatId);
+        if (selectedCategory === editingCatId) {
+            selectedCategory = allCategories[0] ? allCategories[0].id : 'other';
+        }
+
+        saveToLocalStorage();
+        renderCategoryGrid();
+        renderSpendingBreakdown();
+        renderTransactionsUI();
+
+        document.getElementById('add-category-modal').classList.add('hidden');
+        showToast("ลบหมวดหมู่เรียบร้อยแล้ว", "🗑️");
+        playCuteSound('pop');
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('categories').delete().eq('id', editingCatId);
+            } catch (e) {
+                console.error("Supabase Cat Delete Error:", e);
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        initApp();
+
+        // Header Buttons
+        document.getElementById('quick-add-btn').onclick = openAddTransactionModal;
+        document.getElementById('manage-users-btn').onclick = () => {
+            document.getElementById('new-member-name').value = '';
+            document.getElementById('member-modal').classList.remove('hidden');
+        };
+        document.getElementById('edit-goal-btn').onclick = () => {
+            document.getElementById('goal-input-title').value = savingsGoal.title;
+            document.getElementById('goal-input-target').value = savingsGoal.targetAmount;
+            document.getElementById('goal-modal').classList.remove('hidden');
+        };
+        document.getElementById('switch-wallet-btn').onclick = () => {
+            document.getElementById('wallet-code-input').value = walletId;
+            document.getElementById('wallet-modal').classList.remove('hidden');
+        };
+        document.getElementById('supabase-sync-btn').onclick = () => {
+            document.getElementById('supabase-modal').classList.remove('hidden');
+        };
+        document.getElementById('refresh-sb-btn').onclick = () => {
+            fetchFromSupabase(false);
+        };
+        document.getElementById('open-manage-methods-btn').onclick = openManageMethodsModal;
+
+        // Modal Close Buttons
+        document.querySelectorAll('.close-modal').forEach(b => {
+            b.onclick = () => {
+                b.closest('.fixed').classList.add('hidden');
+            };
+        });
+        document.querySelectorAll('.close-methods-modal').forEach(b => {
+            b.onclick = () => {
+                document.getElementById('manage-methods-modal').classList.add('hidden');
+            };
+        });
+        document.querySelectorAll('.close-category-modal').forEach(b => {
+            b.onclick = () => {
+                document.getElementById('add-category-modal').classList.add('hidden');
+            };
+        });
+
+        // Summary Tabs Switching
+        document.getElementById('sum-tab-member').onclick = () => {
+            ['member', 'method', 'subdetail', 'category'].forEach(t => {
+                document.getElementById(`summary-${t}-view`).classList.add('hidden');
+                document.getElementById(`sum-tab-${t}`).className = 'py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn';
+            });
+            document.getElementById('summary-member-view').classList.remove('hidden');
+            document.getElementById('sum-tab-member').className = 'py-2 rounded-xl bg-white text-pink-600 shadow-xs flex items-center justify-center gap-0.5 transition-all bouncy-btn font-bold';
+            playCuteSound('pop');
+        };
+
+        document.getElementById('sum-tab-method').onclick = () => {
+            ['member', 'method', 'subdetail', 'category'].forEach(t => {
+                document.getElementById(`summary-${t}-view`).classList.add('hidden');
+                document.getElementById(`sum-tab-${t}`).className = 'py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn';
+            });
+            document.getElementById('summary-method-view').classList.remove('hidden');
+            document.getElementById('sum-tab-method').className = 'py-2 rounded-xl bg-white text-purple-600 shadow-xs flex items-center justify-center gap-0.5 transition-all bouncy-btn font-bold';
+            playCuteSound('pop');
+        };
+
+        document.getElementById('sum-tab-subdetail').onclick = () => {
+            ['member', 'method', 'subdetail', 'category'].forEach(t => {
+                document.getElementById(`summary-${t}-view`).classList.add('hidden');
+                document.getElementById(`sum-tab-${t}`).className = 'py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn';
+            });
+            document.getElementById('summary-subdetail-view').classList.remove('hidden');
+            document.getElementById('sum-tab-subdetail').className = 'py-2 rounded-xl bg-white text-indigo-600 shadow-xs flex items-center justify-center gap-0.5 transition-all bouncy-btn font-bold';
+            playCuteSound('pop');
+        };
+
+        document.getElementById('sum-tab-category').onclick = () => {
+            ['member', 'method', 'subdetail', 'category'].forEach(t => {
+                document.getElementById(`summary-${t}-view`).classList.add('hidden');
+                document.getElementById(`sum-tab-${t}`).className = 'py-2 rounded-xl text-slate-500 hover:text-slate-800 flex items-center justify-center gap-0.5 transition-all bouncy-btn';
+            });
+            document.getElementById('summary-category-view').classList.remove('hidden');
+            document.getElementById('sum-tab-category').className = 'py-2 rounded-xl bg-white text-amber-600 shadow-xs flex items-center justify-center gap-0.5 transition-all bouncy-btn font-bold';
+            playCuteSound('pop');
+        };
+
+        // Transaction Type Selector
+        document.querySelectorAll('.tx-type-btn').forEach(b => {
+            b.onclick = () => {
+                selectedTxType = b.dataset.type;
+                document.querySelectorAll('.tx-type-btn').forEach(btn => {
+                    btn.className = 'tx-type-btn bg-slate-100 text-slate-600 font-bold py-2.5 rounded-2xl border-2 border-transparent bouncy-btn flex flex-col items-center gap-0.5 text-xs';
+                });
+
+                if (selectedTxType === 'expense') {
+                    b.className = 'tx-type-btn bg-rose-500 text-white font-bold py-2.5 rounded-2xl shadow-md scale-105 border-2 border-rose-600 bouncy-btn flex flex-col items-center gap-0.5 text-xs';
+                } else if (selectedTxType === 'income') {
+                    b.className = 'tx-type-btn bg-emerald-500 text-white font-bold py-2.5 rounded-2xl shadow-md scale-105 border-2 border-emerald-600 bouncy-btn flex flex-col items-center gap-0.5 text-xs';
+                } else if (selectedTxType === 'savings') {
+                    b.className = 'tx-type-btn bg-amber-500 text-white font-bold py-2.5 rounded-2xl shadow-md scale-105 border-2 border-amber-600 bouncy-btn flex flex-col items-center gap-0.5 text-xs';
+                }
+                playCuteSound('pop');
+            };
+        });
+
+        // Add Detail & Preset Buttons
+        document.getElementById('add-current-subdetail-btn').onclick = () => {
+            const subVal = document.getElementById('tx-pay-subdetail').value;
+            addSubDetailPreset(subVal);
+        };
+        document.getElementById('add-note-preset-btn').onclick = () => {
+            const noteVal = document.getElementById('tx-note').value;
+            addNotePreset(noteVal);
+        };
+
+        // Save Transaction
+        document.getElementById('save-tx-btn').onclick = saveTransaction;
+
+        // Category Modal Handlers
+        document.getElementById('open-add-cat-btn').onclick = openAddCategoryModal;
+        document.getElementById('new-cat-name').oninput = updateCategoryPreviewUI;
+        document.getElementById('custom-cat-emoji-input').oninput = (e) => {
+            if (e.target.value.trim()) {
+                selectedNewCatEmoji = e.target.value.trim();
+                updateCategoryPreviewUI();
+            }
+        };
+
+        document.querySelectorAll('.cat-emoji-opt').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('.cat-emoji-opt').forEach(opt => {
+                    opt.className = 'cat-emoji-opt p-2 bg-slate-50 rounded-xl border-2 border-transparent transition-all';
+                });
+                b.className = 'cat-emoji-opt p-2 rounded-xl border-2 border-purple-500 bg-purple-100 ring-2 ring-purple-400 scale-105 shadow-sm transition-all';
+                selectedNewCatEmoji = b.innerText;
+                document.getElementById('custom-cat-emoji-input').value = '';
+                updateCategoryPreviewUI();
+                playCuteSound('pop');
+            };
+        });
+
+        document.querySelectorAll('.cat-color-opt').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('.cat-color-opt').forEach(opt => {
+                    opt.classList.remove('ring-2', 'ring-purple-600', 'ring-offset-2', 'scale-105', 'shadow-md');
+                });
+                b.classList.add('ring-2', 'ring-purple-600', 'ring-offset-2', 'scale-105', 'shadow-md');
+                selectedNewCatColor = b.dataset.color;
+                updateCategoryPreviewUI();
+                playCuteSound('pop');
+            };
+        });
+
+        document.getElementById('save-custom-category-btn').onclick = saveCustomCategory;
+        document.getElementById('delete-cat-btn').onclick = deleteCategory;
+
+        // Create Member Handler
+        document.querySelectorAll('.avatar-option').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('.avatar-option').forEach(opt => opt.className = 'avatar-option p-2 rounded-2xl border-2 border-transparent bg-slate-100 transition-all');
+                b.className = 'avatar-option p-2 rounded-2xl border-2 border-amber-400 bg-amber-100 ring-2 ring-amber-400 scale-105 shadow-sm transition-all';
+                selectedAvatar = b.innerText;
+                playCuteSound('pop');
+            };
+        });
+
+        document.getElementById('create-member-btn').onclick = async () => {
+            const nameVal = document.getElementById('new-member-name').value.trim();
+            if (!nameVal) {
+                showToast("กรุณากรอกชื่อสมาชิก!", "⚠️");
+                return;
+            }
+
+            const newMem = {
+                id: `mem_${Date.now()}`,
+                wallet_id: walletId,
+                name: nameVal,
+                avatar: selectedAvatar
+            };
+
+            members.push(newMem);
+            activeMemberId = newMem.id;
+            saveToLocalStorage();
+            renderMembersUI();
+
+            document.getElementById('member-modal').classList.add('hidden');
+            showToast(`เพิ่มสมาชิก ${nameVal} สำเร็จ!`, "🎉");
+            playCuteSound('coin');
+
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('members').insert(newMem);
+                } catch (e) {
+                    console.error("Supabase Member Save Error:", e);
+                }
+            }
+        };
+
+        // Savings Goal Save Handler
+        document.getElementById('save-goal-btn').onclick = async () => {
+            const titleVal = document.getElementById('goal-input-title').value.trim();
+            const targetVal = parseFloat(document.getElementById('goal-input-target').value);
+
+            if (!titleVal || isNaN(targetVal) || targetVal <= 0) {
+                showToast("กรุณากรอกเป้าหมายและราคาให้ถูกต้อง!", "⚠️");
+                return;
+            }
+
+            savingsGoal.title = titleVal;
+            savingsGoal.targetAmount = targetVal;
+
+            saveToLocalStorage();
+            renderGoalUI();
+
+            document.getElementById('goal-modal').classList.add('hidden');
+            showToast("ตั้งเป้าหมายออมเงินแล้ว!", "🎯");
+            playCuteSound('coin');
+
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('savings_goals').upsert({
+                        wallet_id: walletId,
+                        title: savingsGoal.title,
+                        target_amount: savingsGoal.targetAmount,
+                        current_amount: savingsGoal.currentAmount,
+                        emoji: savingsGoal.emoji
+                    });
+                } catch (e) {
+                    console.error("Supabase Goal Save Error:", e);
+                }
+            }
+        };
+
+        // Wallet Switching Handlers
+        document.getElementById('join-wallet-btn').onclick = () => {
+            const codeVal = document.getElementById('wallet-code-input').value.trim().toUpperCase();
+            if (!codeVal) {
+                showToast("กรุณาระบุรหัสกระเป๋า!", "⚠️");
+                return;
+            }
+
+            walletId = codeVal;
+            localStorage.setItem('kiddie_wallet_id', walletId);
+
+            document.getElementById('wallet-modal').classList.add('hidden');
+            showToast(`สลับกระเป๋าเป็นกลุ่ม [${walletId}] แล้ว`, "🔑");
+            playCuteSound('coin');
+
+            initApp();
+        };
+
+        document.getElementById('close-wallet-modal-btn').onclick = () => {
+            document.getElementById('wallet-modal').classList.add('hidden');
+        };
+
+        // Supabase Connection Settings Save
+        document.getElementById('sb-save-settings-btn').onclick = () => {
+            sbUrl = document.getElementById('sb-url-input').value.trim();
+            sbKey = document.getElementById('sb-key-input').value.trim();
+
+            localStorage.setItem('kiddie_sb_url', sbUrl);
+            localStorage.setItem('kiddie_sb_key', sbKey);
+
+            document.getElementById('supabase-modal').classList.add('hidden');
+
+            if (sbUrl && sbKey) {
+                fetchFromSupabase(false);
+            } else {
+                updateSyncBadgeStatus('offline');
+                showToast("ยกเลิกการตั้งค่า Supabase (ใช้โหมดออฟไลน์)", "ℹ️");
+            }
+        };
+
+        // Month Navigation Buttons
+        document.getElementById('prev-month-btn').onclick = () => {
+            const availableMonths = getAvailableMonthKeys();
+            let idx = availableMonths.indexOf(selectedMonthKey);
+            if (idx === -1) idx = 0;
+            if (idx < availableMonths.length - 1) {
+                selectedMonthKey = availableMonths[idx + 1];
+                renderMonthTabs();
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+                playCuteSound('pop');
+            }
+        };
+
+        document.getElementById('next-month-btn').onclick = () => {
+            const availableMonths = getAvailableMonthKeys();
+            let idx = availableMonths.indexOf(selectedMonthKey);
+            if (idx > 0) {
+                selectedMonthKey = availableMonths[idx - 1];
+                renderMonthTabs();
+                renderSpendingBreakdown();
+                renderTransactionsUI();
+                playCuteSound('pop');
+            }
+        };
+
+        // Reset Filters Button
+        document.getElementById('reset-filters-btn').onclick = () => {
+            filterMember = 'ALL';
+            filterMethod = 'ALL';
+            filterSubDetail = 'ALL';
+            filterCategory = 'ALL';
+            playCuteSound('pop');
+            renderSpendingBreakdown();
+            renderTransactionsUI();
+            showToast("ล้างตัวกรองทั้งหมดแล้ว", "🔄");
+        };
+
+    });
+</script>
+
+</body>
+</html>
